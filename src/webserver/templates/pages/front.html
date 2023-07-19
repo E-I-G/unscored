@@ -78,12 +78,15 @@
 		</p>
 	</section>
 </main>
+{% endblock %}
 
 {% block footer %}
 {{ super() }}
 
 <a class="github" href="{{ config['github_link'] }}">
-	<span class="github-icon">{{ SVGFILES['github-mark'] | safe }}</span>
+	<img src="/static/img/github-mark.png" class="github-icon">
 	Source code
 </a>
+
+<span class="version">ver. {{ VERSION }}</span>
 {% endblock %}

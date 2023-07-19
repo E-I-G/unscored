@@ -18,7 +18,7 @@
 	"contact_scored": "",
 	"admin_username": "admin",
 	"admin_password": "admin",
-	"github_link": "",
+	"github_link": "https://github.com/E-I-G/unscored",
 	"request_cooldown_max_ms": 350,
 	"request_cooldown_min_ms": 150,
 	"rate_limit": 20,
