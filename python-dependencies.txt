@@ -1,0 +1,5 @@
+eventlet
+flask
+flask-compress
+psycopg2-binary
+pybase62

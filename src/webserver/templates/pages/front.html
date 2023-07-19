@@ -1,0 +1,89 @@
+{% extends "layout.html" %}
+{% block head %}
+	{{ super() }}
+{% endblock %}
+
+{% block contents %}
+<main id="front-page">
+	<section>
+		<h2>About Unscored</h2>
+		<p>
+			Reveal content that is <em>"unscored"</em>, i.e. removed by moderators on <a href="https://scored.co/">scored.co</a>,
+			<a href="https://communities.win/">communities.win</a> and adjacent .win forums.
+			<br>
+			Inspired by the various undeletion tools for Reddit such as Removeddit.
+		</p>
+	</section>
+
+	<section class="center">
+		<p>
+			<h3>Enter a user name or paste a valid link to a profile, thread or community:</h3>
+			<form id="url-form" class="front">
+				<div>
+					<input type="text" id="url-box">
+					<input type="submit" id="url-box-btn" value="Go">
+				</div>
+			</form>
+		</p>
+	</section>
+
+	<section style="margin-top: 40px;">
+		<h2>See it in action</h2>
+		<p>
+			<ul>
+				<li>
+					<a rel="nofollow" href="/c/GreatAwakening/p/16biw1Ti8j">GreatAwakening.win users fell for a troll post, so they purged its entire comment section</a>
+				</li>
+				<li>
+					<a rel="nofollow" href="/c/TheDonald/p/16birF9Jp2">A high-traffic thread on patriots.win</a>
+				</li>
+				<li>
+					<a rel="nofollow" href="/c/TheDonald/p/16bime7Ziw/x/c/4TvATNwiXTB">Those damn stormfags...</a>
+				</li>
+				<li>
+					Scored behaves similar to Reddit in regards to removed content. You will not see that anything happened to it unless you try to view it while logged out.
+					<br>
+					Enter your username in the field above to see which comments of yours have been removed.
+				</li>
+			</ul>
+		</p>
+	</section>
+
+	<section>
+		<h2>Monitored communities</h2>
+		<p>
+			Content archival and recovery is currently supported for the following communities:
+
+			<ul>
+				{% for community in supportedCommunities %}
+				<li>
+					<a rel="nofollow" href="/c/{{ community }}">/c/{{ community }}</a>
+				</li>
+				{% endfor %}
+			</ul>
+		</p>
+		<p>
+			Unscored is able recover the content of posts and comments that have been archived prior to removal or have found themselves in a public moderation log.
+		</p>
+	</section>
+
+	<section>
+		<p>
+			<strong>Have any feedback or suggestions?</strong>
+		</p>
+		<p>
+			<a href="{{ config['contact_scored'] }}">DM the creator on Scored</a>
+			<br>
+			Email: <a href="mailto:{{ config['contact_email'] }}">{{ config['contact_email'] }}</a>
+		</p>
+	</section>
+</main>
+
+{% block footer %}
+{{ super() }}
+
+<a class="github" href="{{ config['github_link'] }}">
+	<span class="github-icon">{{ SVGFILES['github-mark'] | safe }}</span>
+	Source code
+</a>
+{% endblock %}

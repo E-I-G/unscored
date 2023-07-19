@@ -1,0 +1,22 @@
+{% extends "layout.html" %}
+{% block head %}
+{{ super() }}
+{% endblock %}
+{% block contents %}
+<div id="error-page">
+	<div class="image">
+		<img src="/static/img/large_warning.png">
+	</div>
+
+	<div class="title">
+		Invalid Scored URL
+	</div>
+	<div class="description"></div>
+
+	<div class="buttons">
+		<div>
+			<a href="/" class="rectangular-button">Back to home page</a>
+		</div>
+	</div>
+</div>
+{% endblock %}

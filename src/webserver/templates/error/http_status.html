@@ -1,0 +1,82 @@
+{% extends "layout.html" %}
+{% block head %}
+{{ super() }}
+{% endblock %}
+{% block contents %}
+<div id="error-page">
+	<div class="image">
+		<img src="/static/img/large_warning.png">
+	</div>
+
+	{% if code == 400 %}
+	<div class="title">400 - Bad Request</div>
+	<div class="description">Your browser sent a request that this server could not understand.</div>
+
+	{% elif code == 401 %}
+	<div class="title">401 - Unauthorized</div>
+	<div class="description">Authentication is required.</div>
+
+	{% elif code == 403 %}
+	<div class="title">403 - Forbidden</div>
+	<div class="description">
+		You don't have access to this content.
+		<br>
+		{% if ws.username %}Your account might not have sufficient permissions.{% else %}Log in and try again.{% endif %}
+	</div>
+
+	{% elif code == 404 %}
+	<div class="title">404 - Not Found</div>
+	<div class="description">
+		The requested content was not found on the server or is not supported.
+	</div>
+
+	{% elif code == 405 %}
+	<div class="title">404 - Method Not Allowed</div>
+	<div class="description">
+		The request type is not supported for the current resource.
+	</div>
+
+	{% elif code == 410 %}
+	<div class="title">410 - Gone</div>
+	<div class="description">
+		The requested content has been removed.
+	</div>
+
+	{% elif code == 413 %}
+	<div class="title">413 - Request Entity Too Large</div>
+	<div class="description">
+		The data value transmitted exceeds the capacity limit.
+	</div>
+
+	{% elif code == 451 %}
+	<div class="title">451 - Unavailable For Legal Reasons</div>
+	<div class="description">
+		The requested content cannot be served due to legal reasons.
+	</div>
+
+	{% elif code == 500 %}
+	<div class="title">500 - Internal server error</div>
+	<div class="description">
+		The server encountered an internal error and was unable to complete your request.
+	</div>
+	<div class="codeblock">
+		{% for ln in lines %}
+		{% if loop.index > 1 %}<br>{% endif %}
+		{{ ln }}
+		{% endfor %}
+	</div>
+
+	{% else %}
+	<div class="title">{{ code }} - Http Error</div>
+	<div class="description">
+		The server returned an error code while trying to serve this resource.
+	</div>
+	{% endif %}
+
+	<div class="buttons">
+		<div>
+			<a href="/" class="rectangular-button">Back to home page</a>
+		</div>
+	</div>
+</div>
+{% endblock %}

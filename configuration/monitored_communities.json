@@ -1,0 +1,82 @@
+[
+	{
+		"name": "ConsumeProduct",
+		"standalone_domain": null,
+		"interval": 1200
+	},
+	{
+		"name": "TheDonald",
+		"standalone_domain": "patriots.win",
+		"interval": 300
+	},
+	{
+		"name": "GreatAwakening",
+		"standalone_domain": "greatawakening.win",
+		"interval": 300
+	},
+	{
+		"name": "KotakuInAction2",
+		"standalone_domain": "kotakuinaction2.win",
+		"interval": 1200
+	},
+	{
+		"name": "Conspiracies",
+		"standalone_domain": "conspiracies.win",
+		"interval": 2400
+	},
+	{
+		"name": "IP2Always",
+		"standalone_domain": "ip2always.win",
+		"interval": 3600
+	},
+	{
+		"name": "NoNewNormal",
+		"standalone_domain": null,
+		"interval": 2400
+	},
+	{
+		"name": "General",
+		"standalone_domain": null,
+		"interval": 3600
+	},
+	{
+		"name": "Meta",
+		"standalone_domain": null,
+		"interval": 2000
+	},
+	{
+		"name": "Funny",
+		"standalone_domain": null,
+		"interval": 2000
+	},
+	{
+		"name": "Memes",
+		"standalone_domain": null,
+		"interval": 3600
+	},
+	{
+		"name": "Gaming",
+		"standalone_domain": null,
+		"interval": 3600
+	},
+	{
+		"name": "Technology",
+		"standalone_domain": null,
+		"interval": 7200
+	},
+	{
+		"name": "Animals",
+		"standalone_domain": null,
+		"interval": 7200
+	},
+	{
+		"name": "AskScored",
+		"standalone_domain": null,
+		"interval": 7200
+	},
+	{
+		"name": "Christianity",
+		"standalone_domain": null,
+		"interval": 7200
+	}
+]

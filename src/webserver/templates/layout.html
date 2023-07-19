@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark" data-isadmin="{{ is_admin() | int }}">
+<head>
+	{% block head %}
+	<link rel="stylesheet" href="/static/styles/style.css?v={{ VERSION }}">
+	<script defer src="/static/lib/fontawesome/js/solid.js"></script>
+	<script defer src="/static/lib/fontawesome/js/fontawesome.js"></script>
+	<script src="/static/scripts/main.js?v={{ VERSION }}" type="application/javascript"></script>
+	{% if request['path'] != '/' %}
+	<meta name="robots" content="noindex">
+	{% endif %}
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+	<meta charset="utf-8">
+	<meta name="referrer" content="never">
+	<meta http-equiv=”content-language” content=”en-us”>
+	<link rel="icon" type="image/png" sizes="32x32" href="/static/favicons/favicon-32x32.png">
+	<link rel="icon" type="image/png" sizes="16x16" href="/static/favicons/favicon-16x16.png">
+	<link rel="apple-touch-icon" sizes="180x180" href="/static/favicons/apple-touch-icon.png">
+	<link rel="shortcut icon" href="/static/favicons/favicon.ico">
+	<title>Unscored</title>
+	{% endblock %}
+</head>
+
+<body>
+	<div id="page">
+		{% block header %}
+		<header id="header">
+			<a href="/" id="title"><h1>Unscored</h1></a>
+			<button class="svgbtn svg-toggletheme" id="btn-toggletheme">{{ SVGFILES['toggletheme'] | safe }}</button>
+		</header>
+		{% if request.path != '/' %}
+		<header id="url-header">
+			<form id="url-form" class="header">
+				<div>
+					<input type="text" id="url-box" value="https://scored.co{{ request.full_path.rstrip('?') }}">
+					<input type="submit" id="url-box-btn" value="Go">
+				</div>
+			</form>
+		</header>
+		{% endif %}
+		{% endblock %}
+		
+		{% block bottomHeader %}
+		
+		{% endblock %}
+
+		<div id="contents" class="contents">
+		{% block contents %}{% endblock %}
+		</div>
+
+		<footer id="footer">
+		{% block footer %}
+		
+		{% endblock %}
+		</footer>
+
+		<div id="toast" data-type="info">
+			<span class="sprite-container"><i class="fa-solid fa-circle-info"></i></span>
+			<span class="text">Toast message</div>
+		</div>
+
+		<div id="modal">
+			<div id="modal-content-outer">
+				<div id="modal-header">
+					<span id="modal-back">&lt;</span>
+					<span id="modal-title"></span>
+					<span id="modal-close" onclick="modalClose();">&times;</span>
+				</div>
+				<div id="modal-content"></div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

@@ -1,0 +1,45 @@
+{% extends "layout.html" %}
+{% block head %}
+	{{ super() }}
+	
+	<script src="/static/scripts/admin.js?v={{ VERSION }}" type="application/javascript"></script>
+	<link rel="stylesheet" href="/static/styles/admin.css?v={{ VERSION }}">
+{% endblock %}
+
+{% block contents %}
+<form action="" onsubmit="submitBlockIPForm(event);" style="margin-bottom: 20px;">
+	<label for="blocked-ip">Block IP:</label>
+	<br>
+	<input type="text" name="ip" id="blocked-ip">
+	<br>
+	<input type="submit" value="Block">
+</form>
+
+<form action="" onsubmit="submitUnblockIPForm(event);" style="margin-bottom: 20px;">
+	<label for="unblocked-ip">Unblock IP:</label>
+	<br>
+	<input type="text" name="ip" id="unblocked-ip">
+	<br>
+	<input type="submit" value="Unblock">
+</form>
+
+<a href="ip-blocks/">Show IP blocks</a>
+
+<hr>
+
+{% for rq in removalRequests %}
+<div class="removal-request">
+	<div class="head">
+		<span class="ip">{{ rq.ip }}</span>
+		<span class="timeago" data-timestamp="{{ rq.time }}">{{ rq.timeago }}</span>
+		<b class="reason">{{ rq.reason }}</b>
+	</div>
+	<div class="description">
+		{{ rq.description }}
+	</div>
+	<div class="link">
+		<a href="{{ rq.url }}">{{ rq.url }}</a>
+	</div>
+</div>
+{% endfor %}
+{% endblock %}

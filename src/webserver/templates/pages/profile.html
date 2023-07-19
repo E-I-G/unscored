@@ -1,0 +1,56 @@
+{% extends "layout.html" %}
+{% block head %}
+	{{ super() }}
+	<script src="/static/lib/showdown.min.js" type="application/javascript"></script>
+	<script src="/static/lib/showdown-htmlescape.min.js" type="application/javascript"></script>
+	<script src="/static/lib/xss.min.js" type="application/javascript"></script>
+	<script src="/static/lib/showdown-xss-filter.js" type="application/javascript"></script>
+	
+	<script src="/static/scripts/threads.js?v={{ VERSION }}" type="application/javascript"></script>
+	<link rel="stylesheet" href="/static/styles/threads.css?v={{ VERSION }}">
+{% endblock %}
+
+{% block contents %}
+<div id="profile-header">
+	<span id="profile-username"></span>
+	|
+	<a href="?type=comment">Comments</a>
+	|
+	<a href="?type=post">Posts</a>
+	|
+	<a href="?type=removed" class="removed">Removed</a>
+</div>
+
+<div id="spinner">
+	<div class="gears" id="two-gears">
+		<div class="gears-container">
+			<div class="gear-rotate"></div>
+			<div class="gear-rotate-left"></div>
+		</div>
+	</div>
+	<div id="loading-text">
+		Loading...
+	</div>
+</div>
+<div id="error-container" hidden>
+	<div id="error">
+		<i class="fa-solid fa-triangle-exclamation"></i>
+		<span id="error-message">Error</span>
+	</div>
+</div>
+<div id="status-container" hidden>
+</div>
+<main id="profile" data-disptype="profile" hidden>
+	<div id="profile-content"></div>
+	<div id="loadmore-btn-container" hidden>
+		<div id="loadmore-upto">
+			Showing content up to 0 days ago
+		</div>
+		<a href="javascript:void(0)" class="btn-page" id="btn-loadmore">Load more...</a>
+	</div>
+	<div id="nav-btns" hidden>
+		<a href="" class="btn-page" id="btn-prevpage">&lt; Previous</a>
+		<a href="" class="btn-page" id="btn-nextpage">Next &gt;</a>
+	</div>
+</main>
+{% endblock %}

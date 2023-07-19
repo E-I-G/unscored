@@ -1,0 +1,52 @@
+{% extends "layout.html" %}
+{% block head %}
+	{{ super() }}
+	<script src="/static/lib/showdown.min.js" type="application/javascript"></script>
+	<script src="/static/lib/showdown-htmlescape.min.js" type="application/javascript"></script>
+	<script src="/static/lib/xss.min.js" type="application/javascript"></script>
+	<script src="/static/lib/showdown-xss-filter.js" type="application/javascript"></script>
+	
+	<script src="/static/scripts/threads.js?v={{ VERSION }}" type="application/javascript"></script>
+	<link rel="stylesheet" href="/static/styles/threads.css?v={{ VERSION }}">
+{% endblock %}
+
+{% block contents %}
+<div id="spinner">
+	<div class="gears" id="two-gears">
+		<div class="gears-container">
+			<div class="gear-rotate"></div>
+			<div class="gear-rotate-left"></div>
+		</div>
+	</div>
+	<div id="loading-text">
+		Loading...
+	</div>
+</div>
+<div id="error-container" hidden>
+	<div id="error">
+		<i class="fa-solid fa-triangle-exclamation"></i>
+		<span id="error-message">Error</span>
+	</div>
+</div>
+<div id="status-container" hidden>
+</div>
+<main id="feed" data-disptype="feed" hidden>
+	<div id="summary">
+		<div>
+			<div>
+				<span id="item-count">0 posts on page</span>
+			</div>
+			<div>
+				<span id="item-count-removed">0 removed (0%)</span>
+			</div>
+			<div>
+				<span id="item-count-note">Posts removed through automated means or before archival cannot be listed.</span>
+			</div>
+		</div>
+	</div>
+	<div id="posts"></div>
+	<div id="nav-btns" hidden>
+		<a href="" class="btn-page" id="btn-nextpage">Next &gt;</a>
+	</div>
+</main>
+{% endblock %}

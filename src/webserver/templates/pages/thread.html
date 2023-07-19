@@ -1,0 +1,60 @@
+{% extends "layout.html" %}
+{% block head %}
+	{{ super() }}
+	<script src="/static/lib/showdown.min.js" type="application/javascript"></script>
+	<script src="/static/lib/showdown-htmlescape.min.js" type="application/javascript"></script>
+	<script src="/static/lib/xss.min.js" type="application/javascript"></script>
+	<script src="/static/lib/showdown-xss-filter.js" type="application/javascript"></script>
+
+	<script src="/static/scripts/threads.js?v={{ VERSION }}" type="application/javascript"></script>
+	<link rel="stylesheet" href="/static/styles/threads.css?v={{ VERSION }}">
+{% endblock %}
+
+{% block contents %}
+<div id="spinner">
+	<div class="gears" id="two-gears">
+		<div class="gears-container">
+			<div class="gear-rotate"></div>
+			<div class="gear-rotate-left"></div>
+		</div>
+	</div>
+	<div id="loading-text">
+		Loading...
+	</div>
+</div>
+<div id="error-container" hidden>
+	<div id="error">
+		<i class="fa-solid fa-triangle-exclamation"></i>
+		<span id="error-message">Error</span>
+	</div>
+</div>
+<main id="thread" data-disptype="thread" hidden>
+	<div id="post"></div>
+	<div id="summary">
+		<div>
+			<div>
+				<span id="item-count">0 comments</span>
+			</div>
+			<div>
+				<span id="item-count-removed">0 removed (0%)</span>
+				<br>
+				<span id="item-count-deleted">0 deleted (0%)</span>
+			</div>
+		</div>
+		<div id="sort-container">
+			<label for="sort">Sort:</label>
+			<select id="sort">
+				<option value="top">Top</option>
+				<option value="new">New</option>
+				<option value="old">Old</option>
+				<option value="controversial">Worst</option>
+			</select>
+		</div>
+	</div>
+	<div id="single-thread" hidden>
+		You are viewing a single comment's thread.
+		<a>View all</a>
+	</div>
+	<div id="comments"></div>
+</main>
+{% endblock %}
