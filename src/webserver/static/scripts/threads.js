@@ -56,7 +56,7 @@ function linkify(element, ignoreLines) {
 			if (match.startsWith('u/') || match.startsWith('c/')) {
 				parts.push('<a href="https://scored.co/' + match + '" target="_blank">' + match + '</a>');
 			} else {
-				parts.push('<a href="http://' + match + '" target="_blank">' + match + '</a>');
+				parts.push('<a href="' + match + '" target="_blank">' + match + '</a>');
 			}
 			text = text.substring(match.length + before.length);
 		}
@@ -250,6 +250,7 @@ function renderItemAttributes(type, item, data) {
 	item.setAttribute('data-ismoderator', data.is_moderator * 1);
 	item.setAttribute('data-nsfw', data.is_nsfw * 1);
 	item.setAttribute('data-link', data.link);
+	var isRecovered = data.archive.recovered_from_scrape || data.archive.recovered_from_log
 
 	if (type == 'post') {
 		item.querySelector('.thumbnail').onclick = function (event) {
@@ -355,12 +356,19 @@ function renderItemAttributes(type, item, data) {
 		var text = document.createElement('i');
 		text.innerText = '[' + data.removal_source + ']';
 		attrsStatus.appendChild(text);
-	} else if (data.moderation.approved_by) {
+	} else if (data.moderation.approved_at || isRecovered && !data.is_removed && !data.is_deleted) {
 		var icon = document.createElement('span');
 		icon.className = 'icon approved';
 		icon.innerHTML = '<i class="fa-solid fa-check"></i>';
 		attrsStatus.appendChild(icon);
-		var message = 'Approved by ' + data.moderation.approved_by;
+		if (data.moderation.approved_at) {
+			var message = 'Approved';
+			if (data.moderation.approved_by) {
+				message += ' by ' + data.moderation.approved_by;
+			}
+		} else {
+			var message = 'Likely reinstated after being auto-removed';
+		}
 		var text = document.createElement('span');
 		text.innerText = message;
 		attrsStatus.appendChild(text);
@@ -409,12 +417,12 @@ function renderItemAttributes(type, item, data) {
 		icon.className = 'tooltip-container right icon archive-partial';
 		icon.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i><span class="tooltip">Flagged for illegal content</span>';
 		buttons.appendChild(icon);
-	} else if (data.archive.recovered_from_log) {
+	} else if (data.archive.recovered_from_log && (data.is_removed || data.is_deleted)) {
 		var icon = document.createElement('span');
 		icon.className = 'tooltip-container right icon archive-partial';
 		icon.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i><span class="tooltip">Partially recovered from mod log</span>';
 		buttons.appendChild(icon);
-	} else if (data.archive.recovered_from_scrape) {
+	} else if (data.archive.recovered_from_scrape && (data.is_removed || data.is_deleted)) {
 		var icon = document.createElement('span');
 		icon.className = 'tooltip-container right icon archive-partial';
 		icon.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i><span class="tooltip">Recovered by scraping profile page</span>';

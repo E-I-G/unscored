@@ -105,7 +105,7 @@ def scrape_page(url: str, params={}, selector='html'):
 			'User-Agent': st.config['scored_api_useragent']
 		}, timeout=10)
 	except Exception as e:
-		logger.logerr('[Scored API] exception - %s: %s' % (e.__class__.__name__, e))
+		logger.logerr('[Scraping] exception - %s: %s' % (e.__class__.__name__, e))
 		return None
 	soup = BeautifulSoup(resp.content, 'html.parser')
 	api_cooldown()

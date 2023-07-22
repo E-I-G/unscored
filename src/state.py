@@ -5,7 +5,7 @@ import time
 
 from utils import logger
 
-VERSION = '1.1.0'
+VERSION = '1.1.2'
 
 DATA_DIR = 'data'
 

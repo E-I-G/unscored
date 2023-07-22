@@ -50,7 +50,8 @@ def ingest_missing_post(db: database.DBRequest, post_id: int):
 			else:
 				logger.logdebug('Did not manage to scrape post')
 		try:
-			archive.add_post(db, community, post)
+			if not post['is_deleted']:
+				archive.add_post(db, community, post)
 		except Exception:
 			logger.log_traceback()
 		else:
@@ -106,7 +107,7 @@ def ingest_global_posts(db: database.DBRequest):
 		logger.log('Ingested %d new posts from global feed up to id %d' % (postCount, firstId))
 		st.ingest['global']['last_post_id'] = firstId
 		st.save_state()
-		missingIds = [id for id in range(finalId, firstId) if id not in idsFound]
+		missingIds = [id for id in range(finalId + 1, firstId) if id not in idsFound]
 		logger.log('%d ids missing' % len(missingIds))
 		for id in missingIds:
 			ingest_missing_post(db, id)
