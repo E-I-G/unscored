@@ -22,10 +22,11 @@ MONITORED_MODLOG_ACTIONS = [
 
 def add_post(db: database.DBRequest, community: str, post: dict):
 	logger.logdebug('Adding post: %s %d' % (community, post['id']))
+	db.commit()
 	board_id = database.get_board_id(db, community)
 	author_id = database.get_author_id(db, post['author'])
 	moderation = post.get('moderation', scoredapi.DEFAULT_MODERATION_INFO)
-	IntegrityError = database.get_IntegrityError()
+	IntegrityError = db.get_IntegrityError()
 	try:
 		db.exec(
 			"""
@@ -65,14 +66,18 @@ def add_post(db: database.DBRequest, community: str, post: dict):
 		)
 	except IntegrityError:
 		logger.logwrn('Post %d already in database' % post['id'])
+		db.rollback()
+	else:
+		db.commit()
 
 
 def add_comment(db: database.DBRequest, community: str, comment: dict):
 	logger.logdebug('Adding comment: %s %d' % (community, comment['id']))
+	db.commit()
 	board_id = database.get_board_id(db, community)
 	author_id = database.get_author_id(db, comment['author'])
 	moderation = comment.get('moderation', scoredapi.DEFAULT_MODERATION_INFO)
-	IntegrityError = database.get_IntegrityError()
+	IntegrityError = db.get_IntegrityError()
 	try:
 		db.exec(
 			"""
@@ -104,6 +109,9 @@ def add_comment(db: database.DBRequest, community: str, comment: dict):
 		)
 	except IntegrityError:
 		logger.logwrn('Comment %d already in database' % comment['id'])
+		db.rollback()
+	else:
+		db.commit()
 
 
 
@@ -214,7 +222,6 @@ def add_modlog_record(db: database.DBRequest, community: str, record: dict):
 
 	elif record['type'] == 'removepost':
 		db.exec("UPDATE posts SET removed_at_ms = ?, removed_by = ? WHERE id = ?", timestamp, moderator, post_id)
-		db.exec("UPDATE posts SET title = ?, recovered_from_log = TRUE WHERE id = ? AND title = ''", description, post_id)
 
 	elif record['type'] == 'removecomment':
 		db.exec("UPDATE comments SET removed_at_ms = ?, removed_by = ? WHERE id = ?", timestamp, moderator, comment_id)

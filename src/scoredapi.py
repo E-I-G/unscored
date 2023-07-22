@@ -4,6 +4,7 @@ import time
 import eventlet
 import requests
 import base62
+from bs4 import BeautifulSoup
 
 from utils import helpers
 from utils import logger
@@ -26,7 +27,8 @@ DEFAULT_ARCHIVE_INFO = {
 	'legal_removed': False,
 	'legal_approved': False,
 	'reportable': False,
-	'recovered_from_log': False
+	'recovered_from_log': False,
+	'recovered_from_scrape': False
 }
 
 DEFAULT_BAN_INFO = {
@@ -95,6 +97,19 @@ def apireq(method: str, endpoint: str, params: dict):
 			'error': 'Failed'
 		}
 	
+
+def scrape_page(url: str, params={}, selector='html'):
+	logger.logdebug('[Scraping] request: GET %s -> %s' % (url, selector))
+	try:
+		resp = requests.get(url, params=params, headers={
+			'User-Agent': st.config['scored_api_useragent']
+		}, timeout=10)
+	except Exception as e:
+		logger.logerr('[Scored API] exception - %s: %s' % (e.__class__.__name__, e))
+		return None
+	soup = BeautifulSoup(resp.content, 'html.parser')
+	api_cooldown()
+	return soup.select_one(selector)
 
 
 def scored_uuid_to_id(uuid):

@@ -17,7 +17,7 @@ from webserver import wapp
 def root_page():
 	return flask.render_template(
 		'pages/front.html',
-		supportedCommunities = list(st.ingest.keys())
+		supportedCommunities = [c['name'] for c in st.communities]
 	)
 
 

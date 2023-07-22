@@ -5,7 +5,7 @@ import time
 
 from utils import logger
 
-VERSION = '1.0.2'
+VERSION = '1.1.0'
 
 DATA_DIR = 'data'
 
@@ -54,6 +54,14 @@ def load_state():
 				'domain': community['standalone_domain'],
 				'interval': community['interval']
 			})
+	if 'global' not in ingest:
+		ingest['global'] = {
+			'last_post_id': max([community['last_post_id'] for community in ingest.values()]),
+			'interval': config['global_interval'],
+			'modlogs': False,
+			'banlogs': False
+		}
+	ingest['global']['interval'] = config['global_interval']
 
 def save_state():
 	with open(INGEST_STATE_FILE, 'w') as f:

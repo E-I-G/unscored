@@ -211,6 +211,7 @@ def merge_post_with_archived(db: database.DBRequest, remote_post: dict, archived
 			'legal_removed': bool(archived_post.legal_removed),
 			'legal_approved': bool(archived_post.legal_approved),
 			'recovered_from_log': bool(archived_post.recovered_from_log),
+			'recovered_from_scrape': bool(archived_post.recovered_from_scrape),
 			'reportable': (
 				st.config['reporting_enabled'] and
 				post['title'] and
@@ -286,6 +287,7 @@ def merge_comment_with_archived(db: database.DBRequest, remote_comment: dict, ar
 			'legal_removed': bool(archived_comment.legal_removed),
 			'legal_approved': bool(archived_comment.legal_approved),
 			'recovered_from_log': bool(archived_comment.recovered_from_log),
+			'recovered_from_scrape': False,
 			'reportable': (
 				st.config['reporting_enabled'] and
 				comment['raw_content'] and

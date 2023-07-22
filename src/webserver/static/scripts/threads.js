@@ -414,6 +414,11 @@ function renderItemAttributes(type, item, data) {
 		icon.className = 'tooltip-container right icon archive-partial';
 		icon.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i><span class="tooltip">Partially recovered from mod log</span>';
 		buttons.appendChild(icon);
+	} else if (data.archive.recovered_from_scrape) {
+		var icon = document.createElement('span');
+		icon.className = 'tooltip-container right icon archive-partial';
+		icon.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i><span class="tooltip">Recovered by scraping profile page</span>';
+		buttons.appendChild(icon);
 	} else if (data.archive.is_archived) {
 		var icon = document.createElement('span');
 		icon.className = 'tooltip-container right icon archive-ok';

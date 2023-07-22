@@ -24,6 +24,7 @@
 	"rate_limit": 20,
 	"request_limit": 5,
 	"ingest_limit": 25,
+	"global_interval": 300,
 	"purge_deleted": false,
 	"show_deleted": true,
 	"reporting_enabled": true,

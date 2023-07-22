@@ -1,11 +1,122 @@
 import time
 
+import markdownify
+from bs4 import BeautifulSoup
+
 from utils import logger
 
 import database
 import state as st
 import archive
 import scoredapi
+
+
+def ingest_missing_post(db: database.DBRequest, post_id: int):
+	logger.logdebug('Ingesting missing post: %d' % post_id)
+	resp = scoredapi.apireq('GET', '/api/v2/post/post.json', {
+		'id': post_id,
+		'comments': 'false'
+	})
+	if resp['status']:
+		post = resp['posts'][0]
+		community = post['community']
+		recovered_from_scrape = False
+		if post['author'] and community in st.ingest and st.ingest[community]['domain']:
+			logger.logdebug('Attempting to recover post %d by scraping profile' % post_id)
+			url = 'https://' + st.ingest[community]['domain'] + '/u/' + post['author']
+			main = scoredapi.scrape_page(url, {'type': 'post'}, 'main')
+			scraped = error = None
+			if main:
+				scraped = main.select_one('.post[data-id="' + str(post_id) + '"]')
+				error = main.select_one('.error')
+			if scraped is not None:
+				logger.logdebug('Successfully scraped post')
+				recovered_from_scrape = True
+				post['title'] = scraped.select_one('.title').text.strip()
+				inner = scraped.select_one('.content .inner')
+				if post['type'] == 'text' and inner is not None:
+					post['raw_content'] = markdownify.markdownify(str(inner))
+				elif post['type'] == 'link' and inner is not None:
+					if inner.a is not None:
+						post['link'] = inner.a['href']
+					elif inner.img is not None:
+						post['link'] = inner.img['data-src']
+				elif post['type'] == 'link' and scraped.select_one('.expand-link') is not None:
+					post['link'] = scraped.select_one('.expand-link')['href']
+			elif error is not None:
+				errText = error.div.text.strip()
+				if errText == 'User has been suspended.':
+					archive.mark_user_suspended(db, post['author'])
+			else:
+				logger.logdebug('Did not manage to scrape post')
+		try:
+			archive.add_post(db, community, post)
+		except Exception:
+			logger.log_traceback()
+		else:
+			if recovered_from_scrape:
+				db.exec("UPDATE posts SET recovered_from_scrape = TRUE WHERE id = ?", post_id)
+
+
+
+def ingest_global_posts(db: database.DBRequest):
+	firstId = None
+	finalId = st.ingest['global']['last_post_id']
+	fromId = None
+	previousId = None
+	reqCount = 0
+	postCount = 0
+	end = False
+	idsFound = set()
+	logger.log('Fetching new posts from global feed up to id %d' % finalId)
+
+	while reqCount < st.config['ingest_limit']:
+		reqCount += 1
+		logger.logtrace('Request #%d (limit=%d)' % (reqCount, st.config['ingest_limit']))
+		resp = scoredapi.apireq('GET', '/api/v2/post/newv2.json', {
+			'community': 'win',
+			'feedId': 2,
+			'from': fromId
+		})
+		if resp['status'] and len(resp['posts']) > 0:
+			for post in resp['posts']:
+				if post['id'] <= finalId:
+					end = True
+					break
+				if post['id'] == previousId: #Skip duplicates
+					continue
+				if firstId is None:
+					firstId = post['id']
+				if post['is_deleted']:
+					continue
+				idsFound.add(post['id'])
+				previousId = post['id']
+				postCount += 1
+				try:
+					archive.add_post(db, post['community'], post)
+				except Exception:
+					logger.log_traceback()
+			fromId = resp['posts'][-1]['uuid']
+			if end or not resp['has_more_entries']:
+				break
+		else:
+			break
+	
+	if postCount:
+		logger.log('Ingested %d new posts from global feed up to id %d' % (postCount, firstId))
+		st.ingest['global']['last_post_id'] = firstId
+		st.save_state()
+		missingIds = [id for id in range(finalId, firstId) if id not in idsFound]
+		logger.log('%d ids missing' % len(missingIds))
+		for id in missingIds:
+			ingest_missing_post(db, id)
+	else:
+		logger.log('No new posts from global feed')
+
+	
+
+
+	
 
 
 def ingest_community_posts(db: database.DBRequest, community: str):
@@ -49,7 +160,8 @@ def ingest_community_posts(db: database.DBRequest, community: str):
 			break
 	if postCount:
 		logger.log('Ingested %d new posts from %s up to id %d' % (postCount, community, firstId))
-		st.ingest[community]['last_post_id'] = firstId
+		if community in st.ingest:
+			st.ingest[community]['last_post_id'] = firstId
 		st.save_state()
 	else:
 		logger.log('No new posts from %s' % community)
@@ -108,6 +220,7 @@ def check_community_modlog_state(community: str):
 		})
 		logsEnabled = resp['status']
 		st.ingest[community]['modlogs'] = logsEnabled
+		st.save_state()
 	if st.ingest[community]['banlogs'] is None:
 		resp = scoredapi.apireq('GET', '/api/v2/community/ban-logs.json', {
 			'community': community,
@@ -115,7 +228,7 @@ def check_community_modlog_state(community: str):
 		})
 		banlogsEnabled = resp['status']
 		st.ingest[community]['banlogs'] = banlogsEnabled
-	st.save_state()
+		st.save_state()
 	logger.logdebug('Mod log state for %s: logs = %s, ban-logs = %s' % (
 		community,
 		st.ingest[community]['modlogs'],
@@ -184,9 +297,11 @@ enqueued = {}
 
 def thread_ingest():
 	logger.log('Initializing communities')
+	enqueued[time.time()] = 'global'
 	for i, community in enumerate(st.communities):
-		enqueued[time.time() + i] = community['name']
+		enqueued[time.time() + i + 1] = community['name']
 		check_community_modlog_state(community['name'])
+
 	logger.log('Starting ingest schedule loop')
 	while True:
 		next = min(enqueued.keys())
@@ -198,12 +313,14 @@ def thread_ingest():
 		logger.logdebug('Ingesting: %s' % community)
 		with database.DBRequest() as db:
 			try:
-				ingest_community_posts(db, community)
-				ingest_community_comments(db, community)
-				if st.ingest[community]['modlogs']:
-					ingest_community_modlogs(db, community, ban_logs=False)
-				elif st.ingest[community]['banlogs']:
-					ingest_community_modlogs(db, community, ban_logs=True)
+				if community == 'global':
+					ingest_global_posts(db)
+				else:
+					ingest_community_comments(db, community)
+					if st.ingest[community]['modlogs']:
+						ingest_community_modlogs(db, community, ban_logs=False)
+					elif st.ingest[community]['banlogs']:
+						ingest_community_modlogs(db, community, ban_logs=True)
 			except Exception:
 				logger.log_traceback()
 		del enqueued[next]

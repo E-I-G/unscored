@@ -26,7 +26,7 @@
 	},
 	{
 		"name": "IP2Always",
-		"standalone_domain": "ip2always.win",
+		"standalone_domain": null,
 		"interval": 3600
 	},
 	{

@@ -17,12 +17,6 @@ def sqlite3_namedtuple_factory(cursor, row):
 	return cls._make(row)
 
 
-def get_IntegrityError():
-	if st.config['database'] == 'postgres':
-		return psycopg2.IntegrityError
-	else:
-		return sqlite3.IntegrityError
-
 
 class DBRequest:
 	rowcount = 0
@@ -58,6 +52,12 @@ class DBRequest:
 			return psycopg2.ProgrammingError
 		else:
 			return sqlite3.ProgrammingError
+		
+	def get_IntegrityError(self):
+		if self.dbType == 'postgres':
+			return psycopg2.IntegrityError
+		else:
+			return sqlite3.IntegrityError
 
 	def _execute_query(self, query, args=tuple(), convert_query=True, return_mode=None):
 		ProgrammingError = self._get_ProgrammingError()
@@ -134,6 +134,12 @@ class DBRequest:
 	def __exit__(self, exc_type, exc_val, exc_tb):
 		self.close()
 
+	def commit(self):
+		self.con.commit()
+
+	def rollback(self):
+		self.con.rollback()
+
 	def close(self):
 		self.con.commit()
 		self.con.close()
@@ -167,8 +173,9 @@ def convert_database(db1: DBRequest, db2: DBRequest):
 		db2.exec("INSERT INTO boards (name) VALUES (?)", row.name)
 
 
-def _perform_db_upgrades(db):
-	pass
+def _perform_db_upgrades(db: DBRequest):
+	if not db.has_field('posts', 'recovered_from_scrape'):
+		db.exec("ALTER TABLE posts ADD COLUMN recovered_from_scrape boolean DEFAULT FALSE")
 
 
 def init_database():
@@ -209,6 +216,7 @@ def init_database():
 			removed_at_ms bigint DEFAULT NULL,
 			removed_by text DEFAULT NULL,
 			recovered_from_log boolean DEFAULT FALSE,
+			recovered_from_scrape boolean DEFAULT FALSE,
 			legal_removed boolean DEFAULT FALSE,
 			legal_approved boolean DEFAULT FALSE,
 			FOREIGN KEY(board_id) REFERENCES boards(id),

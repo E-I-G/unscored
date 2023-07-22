@@ -602,6 +602,10 @@ html[data-theme="light"] #footer {
 	background-color: white;
 }
 
+#footer:empty {
+	display: none;
+}
+
 #footer .github {
 	text-decoration: none;
 	color: unset;
