@@ -5,11 +5,12 @@ import time
 
 from utils import logger
 
-VERSION = '1.1.2'
+VERSION = '1.2.0'
 
 DATA_DIR = 'data'
 
 CONFIGURATION_FILE = 'configuration/config.json'
+DEFAULT_CONFIG_FILE = 'configuration/default_config.json'
 COMMUNITIES_FILE = 'configuration/monitored_communities.json'
 SESSION_SECRET_FILE = 'configuration/session_secret'
 IPBLOCKS_FILE = 'configuration/blocked_addrs.txt'
@@ -21,8 +22,21 @@ config = {}
 communities = []
 
 def load_config():
-	with open(CONFIGURATION_FILE, 'r') as f:
-		cfg = json.load(f)
+	with open(DEFAULT_CONFIG_FILE, 'r') as f:
+		default = json.load(f)
+	if not os.path.isfile(CONFIGURATION_FILE):
+		cfg = {}
+	else:
+		with open(CONFIGURATION_FILE, 'r') as f:
+			cfg = json.load(f)
+	updated = False
+	for key in default:
+		if key not in cfg:
+			updated = True
+			cfg[key] = default[key]
+	if updated:
+		with open(CONFIGURATION_FILE, 'w') as f:
+			json.dump(cfg, f, indent='\t')
 	config.clear()
 	config.update(cfg)
 	with open(COMMUNITIES_FILE, 'r') as f:

@@ -353,7 +353,7 @@ def fetch_thread(db: database.DBRequest, post_id: int):
 	resp = scoredapi.apireq('GET', '/api/v2/post/post.json', {
 		'id': post_id,
 		'comments': 'true'
-	})
+	}, cache_ttl=150)
 	if not resp['status']:
 		raise RequestFailed(resp['error'])
 
@@ -474,7 +474,7 @@ def fetch_profile_posts(db: database.DBRequest, username: str, page: int):
 	isDeleted = False
 	resp = scoredapi.apireq('GET', '/api/v2/user/about.json', {
 		'user': username
-	})
+	}, cache_ttl=300)
 	if not resp['status']:
 		if resp['error'] == 'user is suspended':
 			isSuspended = True
@@ -545,7 +545,7 @@ def fetch_profile_comments(db: database.DBRequest, username: str, page: int):
 	isDeleted = False
 	resp = scoredapi.apireq('GET', '/api/v2/user/about.json', {
 		'user': username
-	})
+	}, cache_ttl=300)
 	if not resp['status']:
 		if resp['error'] == 'user is suspended':
 			isSuspended = True
@@ -616,7 +616,7 @@ def fetch_profile_removedcontent(db: database.DBRequest, username: str, from_pos
 	isDeleted = False
 	resp = scoredapi.apireq('GET', '/api/v2/user/about.json', {
 		'user': username
-	})
+	}, cache_ttl=300)
 	if not resp['status']:
 		if resp['error'] == 'user is suspended':
 			isSuspended = True
@@ -679,9 +679,9 @@ def fetch_profile_removedcontent(db: database.DBRequest, username: str, from_pos
 	reqCount = 0
 	has_more_entries = True
 	upto = 0
-	while reqCount < st.config['request_limit']:
+	while reqCount < st.config['request_limit_profile']:
 		reqCount += 1
-		logger.logtrace('Request #%d (limit=%d)' % (reqCount, st.config['request_limit']))
+		logger.logtrace('Request #%d (limit=%d)' % (reqCount, st.config['request_limit_profile']))
 		resp = scoredapi.apireq('GET', '/api/v2/content/profile.json', {
 			'user': username,
 			'community': 'win',
@@ -763,13 +763,13 @@ def fetch_new_feed(db: database.DBRequest, community: str, from_uuid: str = None
 		if id not in postsById:
 			archived_post = archivedById[id]
 			requestCount += 1
-			if requestCount >= st.config['request_limit']:
+			if requestCount >= st.config['request_limit_feed']:
 				logger.logwrn('Stopped checking missing posts in feed due to having reached the request limit')
 				break
 			resp = scoredapi.apireq('GET', '/api/v2/post/post.json', {
 				'id': archived_post.id,
 				'comments': 'false'
-			})
+			}, cache_ttl=600)
 			if resp['status']:
 				post = resp['posts'][0]
 				if post['is_deleted']:

@@ -42,6 +42,34 @@ DEFAULT_BAN_INFO = {
 ITEMS_PER_PAGE = 25
 
 
+
+respCache = {}
+
+def get_resp_from_cache(endpoint: str, params: dict):
+	curTime = time.time()
+	url = endpoint + '?' + '&'.join(str(k) + '=' + str(v) for k, v in params.items())
+	for key in list(respCache.keys()):
+		if curTime > respCache[key]['expires']:
+			try:
+				del respCache[key]
+			except KeyError:
+				pass
+	if url in respCache:
+		logger.logdebug('[Scored API] Got resp from cache (expires in %ss)' % int(respCache[url]['expires'] - curTime))
+		return respCache[url]['resp']
+	else:
+		return None
+
+def add_resp_to_cache(endpoint: str, params: dict, resp: dict, cache_ttl: int):
+	url = endpoint + '?' + '&'.join(str(k) + '=' + str(v) for k, v in params.items())
+	logger.logtrace('Added to cache (ttl=%d): %s' % (cache_ttl, url))
+	respCache[url] = {
+		'expires': time.time() + cache_ttl,
+		'resp': resp
+	}
+
+
+
 def api_cooldown():
 	ms = random.randrange(st.config['request_cooldown_min_ms'], st.config['request_cooldown_max_ms'])
 	logger.logtrace('API cooldown: %d ms' % ms)
@@ -49,8 +77,7 @@ def api_cooldown():
 
 
 def _api_request(method: str, endpoint: str, params: dict, attempt: int):
-	logger.logdebug('[Scored API] request: %s %s (attempt %d/3)' % (method, endpoint, attempt))
-	logger.logtrace('Params: %s' % params)
+	logger.logdebug('[Scored API] attempt %d/3' % attempt)
 	url = 'https://scored.co/' + endpoint.lstrip('/')
 	headers = {
 		'User-Agent': st.config['scored_api_useragent']
@@ -67,7 +94,13 @@ def _api_request(method: str, endpoint: str, params: dict, attempt: int):
 	return resp
 
 
-def apireq(method: str, endpoint: str, params: dict):
+def apireq(method: str, endpoint: str, params: dict, cache_ttl=0):
+	logger.logdebug('[Scored API] request: %s %s (cache_ttl=%d)' % (method, endpoint, cache_ttl))
+	logger.logtrace('Params: %s' % params)
+	if cache_ttl and st.config['caching']:
+		resp = get_resp_from_cache(endpoint, params)
+		if resp is not None:
+			return resp
 	attempt = 1
 	while attempt <= 3:
 		try:
@@ -86,6 +119,8 @@ def apireq(method: str, endpoint: str, params: dict):
 			else:
 				if not jsonResp['status']:
 					logger.logerr('[Scored API] error response - %s' % jsonResp['error'])
+				if cache_ttl and st.config['caching']:
+					add_resp_to_cache(endpoint, params, jsonResp, cache_ttl)
 				return jsonResp
 		finally:
 			attempt += 1

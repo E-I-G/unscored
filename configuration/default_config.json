@@ -9,9 +9,9 @@
 	"log_weblevel": "INPUT",
 	"database": "sqlite",
 	"sqlite_path": "data/unscored.db",
-	"postgres_dbname": "postgres",
+	"postgres_dbname": "unscored",
 	"postgres_user": "postgres",
-	"postgres_password": "postgres",
+	"postgres_password": "",
 	"postgres_host": "localhost",
 	"postgres_port": 5432,
 	"contact_email": "",
@@ -30,5 +30,5 @@
 	"purge_deleted": false,
 	"show_deleted": true,
 	"reporting_enabled": true,
-	"ingest_enabled": false
+	"ingest_enabled": true
 }
