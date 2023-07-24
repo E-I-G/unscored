@@ -111,7 +111,7 @@ def ingest_global_posts(db: database.DBRequest):
 		logger.log('Ingested %d new posts from global feed up to id %d' % (postCount, firstId))
 		st.ingest['global']['last_post_id'] = firstId
 		st.save_state()
-		missingIds = [id for id in range(finalId + 1, firstId) if id not in idsFound]
+		missingIds = [id for id in range(min(idsFound), max(idsFound)) if id not in idsFound]
 		logger.log('%d ids missing' % len(missingIds))
 		for id in missingIds:
 			ingest_missing_post(db, id)
@@ -302,36 +302,48 @@ enqueued = {}
 
 def thread_ingest():
 	logger.log('Initializing communities')
-	enqueued[time.time()] = 'global'
+	enqueued[time.time()] = {
+		'community': 'global',
+		'startup': True
+	}
+
 	for i, community in enumerate(st.communities):
-		enqueued[time.time() + i + 1] = community['name']
+		enqueued[time.time() + i + 1] = {
+			'community': community['name'],
+			'startup': True
+		}
 		check_community_modlog_state(community['name'])
 
 	logger.log('Starting ingest schedule loop')
 	while True:
 		next = min(enqueued.keys())
-		community = enqueued[next]
+		community = enqueued[next]['community']
+		isStartup = enqueued[next]['startup']
 		timeDiff = max(0, int(next - time.time()))
 		logger.logtrace('Next ingest in %ds: %s' % (timeDiff, community))
 		if timeDiff > 0:
 			time.sleep(timeDiff)
-		logger.logdebug('Ingesting: %s' % community)
-		with database.DBRequest() as db:
-			try:
-				if community == 'global':
-					ingest_global_posts(db)
-				else:
-					ingest_community_comments(db, community)
-					if st.ingest[community]['modlogs']:
-						ingest_community_modlogs(db, community, ban_logs=False)
-					elif st.ingest[community]['banlogs']:
-						ingest_community_modlogs(db, community, ban_logs=True)
-			except Exception:
-				logger.log_traceback()
+		if not isStartup or st.ingest[community]['startup']:
+			logger.logdebug('Ingesting: %s (startup=%s)' % (community, isStartup))
+			with database.DBRequest() as db:
+				try:
+					if community == 'global':
+						ingest_global_posts(db)
+					else:
+						ingest_community_comments(db, community)
+						if st.ingest[community]['modlogs']:
+							ingest_community_modlogs(db, community, ban_logs=False)
+						elif st.ingest[community]['banlogs']:
+							ingest_community_modlogs(db, community, ban_logs=True)
+				except Exception:
+					logger.log_traceback()
+		else:
+			logger.logdebug('Skipping: %s' % community)
 		del enqueued[next]
 		scheduled = time.time() + st.ingest[community]['interval']
-		enqueued[scheduled] = community
-			
-			
+		enqueued[scheduled] = {
+			'community': community,
+			'startup': False
+		}
 
 

@@ -864,10 +864,12 @@ function profileLoadMore(user, from_post, from_comment) {
 				var lastItemTime = Math.floor(response.upto / 1000);
 				document.getElementById('loadmore-upto').innerText = 'Showing content up to ' + timeAgo(lastItemTime);
 			}
+			document.getElementById('loadmore-loading-container').hidden = true;
 			document.getElementById('loadmore-btn-container').hidden = false;
 			if (response.has_more_entries) {
 				document.getElementById('btn-loadmore').onclick = function () {
 					document.getElementById('loadmore-btn-container').hidden = true;
+					document.getElementById('loadmore-loading-container').hidden = false;
 					profileLoadMore(user, response.from_post, response.from_comment);
 				};
 			} else {

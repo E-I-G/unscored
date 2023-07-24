@@ -687,7 +687,7 @@ def fetch_profile_removedcontent(db: database.DBRequest, username: str, from_pos
 			'community': 'win',
 			'post': from_post,
 			'comment': from_comment,
-		})
+		}, cache_ttl=120)
 		if resp['status'] and len(resp['content']) > 0:
 			upto = resp['content'][-1]['created']
 			for content in resp['content']:
@@ -720,7 +720,7 @@ def fetch_new_feed(db: database.DBRequest, community: str, from_uuid: str = None
 	resp = scoredapi.apireq('GET', '/api/v2/post/newv2.json', {
 		'community': community,
 		'from': from_uuid
-	})
+	}, cache_ttl=60)
 	if not resp['status']:
 		raise RequestFailed(resp['error'])
 	if len(resp['posts']) == 0:
@@ -769,7 +769,7 @@ def fetch_new_feed(db: database.DBRequest, community: str, from_uuid: str = None
 			resp = scoredapi.apireq('GET', '/api/v2/post/post.json', {
 				'id': archived_post.id,
 				'comments': 'false'
-			}, cache_ttl=600)
+			}, cache_ttl=1800)
 			if resp['status']:
 				post = resp['posts'][0]
 				if post['is_deleted']:

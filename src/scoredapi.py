@@ -42,6 +42,12 @@ DEFAULT_BAN_INFO = {
 ITEMS_PER_PAGE = 25
 
 
+def get_uagent():
+	uagent = st.config['scored_api_useragent']
+	if st.config['scored_api_useragent_appendver']:
+		uagent += ' ' + st.VERSION
+
+
 
 respCache = {}
 
@@ -80,15 +86,15 @@ def _api_request(method: str, endpoint: str, params: dict, attempt: int):
 	logger.logdebug('[Scored API] attempt %d/3' % attempt)
 	url = 'https://scored.co/' + endpoint.lstrip('/')
 	headers = {
-		'User-Agent': st.config['scored_api_useragent']
+		'User-Agent': get_uagent()
 	}
 	if st.config['scored_api_key'] and st.config['scored_api_secret']:
 		headers['X-Api-Key'] = st.config['scored_api_key']
 		headers['X-Api-Secret'] = st.config['scored_api_secret']
 	if method.lower() == 'get':
-		resp = requests.get(url, headers=headers, params=params, timeout=3)
+		resp = requests.get(url, headers=headers, params=params, timeout=7)
 	elif method.lower() == 'post':
-		resp = requests.post(url, headers=headers, data=params, timeout=3)
+		resp = requests.post(url, headers=headers, data=params, timeout=7)
 	else:
 		raise ValueError('Invalid method')
 	return resp
@@ -103,11 +109,13 @@ def apireq(method: str, endpoint: str, params: dict, cache_ttl=0):
 			return resp
 	attempt = 1
 	while attempt <= 3:
+		t_ms_start = time.time_ns() // 10**6
 		try:
 			resp = _api_request(method, endpoint, params, attempt)
 		except Exception as e:
 			logger.logerr('[Scored API] exception - %s: %s' % (e.__class__.__name__, e))
 		else:
+			logger.logtrace('[Scored API] returned data')
 			try:
 				jsonResp = resp.json()
 			except requests.JSONDecodeError:
@@ -124,6 +132,8 @@ def apireq(method: str, endpoint: str, params: dict, cache_ttl=0):
 				return jsonResp
 		finally:
 			attempt += 1
+			t_ms_diff = time.time_ns() // 10**6 - t_ms_start
+			logger.logtrace('[Scored API] request finished in %d ms' % t_ms_diff)
 			api_cooldown()
 	else:
 		logger.logerr('[Scored API] all attempts failed')
@@ -135,13 +145,17 @@ def apireq(method: str, endpoint: str, params: dict, cache_ttl=0):
 
 def scrape_page(url: str, params={}, selector='html'):
 	logger.logdebug('[Scraping] request: GET %s -> %s' % (url, selector))
+	t_ms_start = time.time_ns() // 1000
 	try:
 		resp = requests.get(url, params=params, headers={
-			'User-Agent': st.config['scored_api_useragent']
+			'User-Agent': get_uagent()
 		}, timeout=10)
 	except Exception as e:
 		logger.logerr('[Scraping] exception - %s: %s' % (e.__class__.__name__, e))
 		return None
+	finally:
+		t_ms_diff = time.time_ns() // 1000 - t_ms_start
+		logger.logtrace('[Scraping] request finished in %d ms' % t_ms_diff)
 	soup = BeautifulSoup(resp.content, 'html.parser')
 	api_cooldown()
 	return soup.select_one(selector)

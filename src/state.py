@@ -5,7 +5,7 @@ import time
 
 from utils import logger
 
-VERSION = '1.2.1'
+VERSION = '1.2.2'
 
 DATA_DIR = 'data'
 
@@ -57,6 +57,7 @@ def load_state():
 			ingest[community['name']] = {
 				'domain': community['standalone_domain'],
 				'interval': community['interval'],
+				'startup': community['startup'] and config['ingest_on_startup'],
 				'last_post_id': 0,
 				'last_comment_id': 0,
 				'last_modlog_timestamp': 0,
@@ -66,16 +67,19 @@ def load_state():
 		else:
 			ingest[community['name']].update({
 				'domain': community['standalone_domain'],
-				'interval': community['interval']
+				'interval': community['interval'],
+				'startup': community['startup'] and config['ingest_on_startup']
 			})
 	if 'global' not in ingest:
 		ingest['global'] = {
 			'last_post_id': max([community['last_post_id'] for community in ingest.values()]),
 			'interval': config['global_interval'],
+			'startup': True,
 			'modlogs': False,
 			'banlogs': False
 		}
 	ingest['global']['interval'] = config['global_interval']
+	ingest['global']['startup'] = config['ingest_on_startup']
 
 def save_state():
 	with open(INGEST_STATE_FILE, 'w') as f:

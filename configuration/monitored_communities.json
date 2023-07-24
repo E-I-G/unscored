@@ -2,81 +2,127 @@
 	{
 		"name": "ConsumeProduct",
 		"standalone_domain": null,
-		"interval": 1200
+		"interval": 1200,
+		"startup": true
 	},
 	{
 		"name": "TheDonald",
 		"standalone_domain": "patriots.win",
-		"interval": 300
+		"interval": 300,
+		"startup": true
 	},
 	{
 		"name": "GreatAwakening",
 		"standalone_domain": "greatawakening.win",
-		"interval": 300
-	},
-	{
-		"name": "KotakuInAction2",
-		"standalone_domain": "kotakuinaction2.win",
-		"interval": 1200
+		"interval": 300,
+		"startup": true
 	},
 	{
 		"name": "Conspiracies",
 		"standalone_domain": "conspiracies.win",
-		"interval": 2400
+		"interval": 600,
+		"startup": true
+	},
+	{
+		"name": "KotakuInAction",
+		"standalone_domain": "kotakuinaction2.win",
+		"interval": 14400,
+		"startup": false
+	},
+	{
+		"name": "KotakuInAction2",
+		"standalone_domain": "kotakuinaction2.win",
+		"interval": 1200,
+		"startup": true
+	},
+	{
+		"name": "WSBets",
+		"standalone_domain": "wsbets.win",
+		"interval": 14400,
+		"startup": false
 	},
 	{
 		"name": "IP2Always",
 		"standalone_domain": null,
-		"interval": 3600
+		"interval": 3600,
+		"startup": true
 	},
 	{
 		"name": "NoNewNormal",
 		"standalone_domain": null,
-		"interval": 2400
-	},
-	{
-		"name": "General",
-		"standalone_domain": null,
-		"interval": 3600
+		"interval": 2400,
+		"startup": true
 	},
 	{
 		"name": "Meta",
 		"standalone_domain": null,
-		"interval": 2000
+		"interval": 3600,
+		"startup": true
 	},
 	{
 		"name": "Funny",
 		"standalone_domain": null,
-		"interval": 2000
+		"interval": 2000,
+		"startup": true
 	},
 	{
 		"name": "Memes",
 		"standalone_domain": null,
-		"interval": 3600
+		"interval": 3600,
+		"startup": false
 	},
 	{
 		"name": "Gaming",
 		"standalone_domain": null,
-		"interval": 3600
+		"interval": 3600,
+		"startup": false
 	},
 	{
 		"name": "Technology",
 		"standalone_domain": null,
-		"interval": 7200
+		"interval": 7200,
+		"startup": false
 	},
 	{
 		"name": "Animals",
 		"standalone_domain": null,
-		"interval": 7200
+		"interval": 7200,
+		"startup": false
 	},
 	{
 		"name": "AskScored",
 		"standalone_domain": null,
-		"interval": 7200
+		"interval": 7200,
+		"startup": false
 	},
 	{
 		"name": "Christianity",
 		"standalone_domain": null,
-		"interval": 7200
+		"interval": 7200,
+		"startup": false
+	},
+	{
+		"name": "General",
+		"standalone_domain": null,
+		"interval": 7200,
+		"startup": true
+	},
+	{
+		"name": "ourgreateststrength",
+		"standalone_domain": null,
+		"interval": 7200,
+		"startup": false
+	},
+	{
+		"name": "Health",
+		"standalone_domain": null,
+		"interval": 9000,
+		"startup": false
+	},
+	{
+		"name": "MGTOW",
+		"standalone_domain": null,
+		"interval": 1800,
+		"startup": true
 	}
 ]
