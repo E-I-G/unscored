@@ -253,12 +253,22 @@ function renderItemAttributes(type, item, data) {
 	var isRecovered = data.archive.recovered_from_scrape || data.archive.recovered_from_log
 
 	if (type == 'post') {
-		item.querySelector('.thumbnail').onclick = function (event) {
-			event.stopImmediatePropagation();
-			event.preventDefault();
-			var post = findItemRoot(event.target);
-			loadPostEmbedPreview(post, true);
-		};
+		if (data.is_image || data.raw_content) {
+			item.querySelector('.thumbnail').onclick = function (event) {
+				event.stopImmediatePropagation();
+				event.preventDefault();
+				var post = findItemRoot(event.target);
+				loadPostEmbedPreview(post, true);
+			};
+		} else if (data.link) {
+			var thumb = item.querySelector('.thumbnail');
+			var anchor = document.createElement('a');
+			anchor.href = data.link;
+			anchor.target = '_blank';
+			anchor.innerHTML = thumb.outerHTML;
+			thumb.replaceWith(anchor);
+		}
+		
 		if (data.preview) {
 			var thumbnail = document.createElement('img')
 			thumbnail.src = data.preview;
@@ -327,6 +337,9 @@ function renderItemAttributes(type, item, data) {
 			icon.innerHTML = '<i class="fa-solid fa-explosion"></i>';
 		} else if (data.removal_source.startsWith('communityFilter')) {
 			var message = 'Removed by local community filter';
+			icon.innerHTML = '<i class="fa-solid fa-filter"></i>';
+		} else if (data.removal_source.startsWith('riskFilter')) {
+			var message = 'User filtered for risk of posting political content';
 			icon.innerHTML = '<i class="fa-solid fa-filter"></i>';
 		} else if (data.removal_source.startsWith('spamFilter')) {
 			var message = 'Removed by platform-wide filter';

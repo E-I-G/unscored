@@ -534,7 +534,7 @@ def fetch_profile_posts(db: database.DBRequest, username: str, page: int):
 			'is_suspended': isSuspended,
 			'posts': [
 				merge_post_with_archived(db, post, archivedPostsById.get(post['id']))
-				for post in resp['posts']
+				for post in sorted(resp['posts'], key=lambda p: p['id'])
 			],
 			'has_more_entries': resp['has_more_entries']
 		}
@@ -707,7 +707,7 @@ def fetch_profile_removedcontent(db: database.DBRequest, username: str, from_pos
 			
 	return {
 		'is_suspended': isSuspended,
-		'content': removed,
+		'content': sorted(removed, key=lambda x: x['created']),
 		'from_post': from_post,
 		'from_comment': from_comment,
 		'upto': upto,

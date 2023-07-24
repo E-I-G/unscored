@@ -41,8 +41,12 @@ def ingest_missing_post(db: database.DBRequest, post_id: int):
 						post['link'] = inner.a['href']
 					elif inner.img is not None:
 						post['link'] = inner.img['data-src']
+					elif inner.div is not None and inner.div['class'] == 'video-container':
+						post['link'] = inner.div['data-src']
 				elif post['type'] == 'link' and scraped.select_one('.expand-link') is not None:
 					post['link'] = scraped.select_one('.expand-link')['href']
+				elif post['type'] == 'link' and scraped.select_one('.thumb a') is not None:
+					post['link'] = scraped.select_one('.thumb a')['href']
 			elif error is not None:
 				errText = error.div.text.strip()
 				if errText == 'User has been suspended.':
