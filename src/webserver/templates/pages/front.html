@@ -27,6 +27,16 @@
 		</p>
 	</section>
 
+	<section>
+		<h2>Communities</h2>
+		<p>
+			<a href="communities/" style="font-size: 16px;">Find communities</a>
+		</p>
+		<p>
+			Unscored is able to recover the content of posts and comments that have been archived prior to removal or have found themselves in a public moderation log.
+		</p>
+	</section>
+
 	<section style="margin-top: 40px;">
 		<h2>See it in action</h2>
 		<p>
@@ -46,24 +56,6 @@
 					Enter your username in the field above to find out which comments of yours have been removed.
 				</li>
 			</ul>
-		</p>
-	</section>
-
-	<section>
-		<h2>Monitored communities</h2>
-		<p>
-			Content archival and recovery is currently supported for the following communities:
-
-			<ul>
-				{% for community in supportedCommunities %}
-				<li>
-					<a rel="nofollow" href="/c/{{ community }}">/c/{{ community }}</a>
-				</li>
-				{% endfor %}
-			</ul>
-		</p>
-		<p>
-			Unscored is able to recover the content of posts and comments that have been archived prior to removal or have found themselves in a public moderation log.
 		</p>
 	</section>
 

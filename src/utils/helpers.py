@@ -117,6 +117,7 @@ def timestr(value=None, include_date=True, hide_todays_date=False, tz_offset=Non
 				timeString = timeString[11:]
 	return timeString
 
+
 def time_from_date(date, tz_offset):
 	from calendar import timegm
 	return timegm(time.strptime(date, '%Y-%m-%d')) + tz_offset * 60

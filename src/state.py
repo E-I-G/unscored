@@ -5,7 +5,7 @@ import time
 
 from utils import logger
 
-VERSION = '1.2.2'
+VERSION = '1.3'
 
 DATA_DIR = 'data'
 
@@ -19,7 +19,6 @@ INGEST_STATE_FILE = 'data/ingest_state.json'
 
 
 config = {}
-communities = []
 
 def load_config():
 	with open(DEFAULT_CONFIG_FILE, 'r') as f:
@@ -39,47 +38,75 @@ def load_config():
 			json.dump(cfg, f, indent='\t')
 	config.clear()
 	config.update(cfg)
-	with open(COMMUNITIES_FILE, 'r') as f:
-		cfg = json.load(f)
-	communities.clear()
-	communities.extend(cfg)
 
 
 ingest = {}
+
+
+def add_community_to_ingest(name, interval=None, domain=None, visibility=None, modlogs=None, banlogs=None, has_icon=None, app_safe=None):
+	if name in ingest:
+		if interval is not None:
+			ingest[name]['interval'] = interval
+		if visibility is not None:
+			ingest[name]['visibility'] = visibility
+		if domain and not ingest[name]['domain']:
+			ingest[name]['domain'] = domain
+		if modlogs is not None:
+			ingest[name]['modlogs'] = modlogs
+		if banlogs is not None:
+			ingest[name]['banlogs'] = banlogs
+		if has_icon is not None:
+			ingest[name]['has_icon'] = has_icon
+		if app_safe is not None:
+			ingest[name]['app_safe'] = app_safe
+	else:
+		ingest[name] = {
+			'domain': domain,
+			'visibility': visibility,
+			'interval': interval if interval is not None else 60,
+			'last_post_id': 0,
+			'last_comment_id': 0,
+			'last_modlog_timestamp': 0,
+			'last_ingested': 0,
+			'modlogs': modlogs,
+			'banlogs': banlogs,
+			'has_icon': has_icon,
+			'app_safe': app_safe
+		}
+
+
+
+def get_ingest_frequency_stat() -> float:
+	"""Returns number of ingests per day"""
+	ingests = 0
+	for c in ingest.values():
+		if c['interval'] > 0:
+			ingests += 24*60*60 / c['interval']
+	return ingests
+
 
 def load_state():
 	os.makedirs('data', exist_ok=True)
 	if os.path.isfile(INGEST_STATE_FILE):
 		with open(INGEST_STATE_FILE, 'r') as f:
 			ingest.update(json.load(f))
-	for community in communities:
-		if community['name'] not in ingest:
-			ingest[community['name']] = {
-				'domain': community['standalone_domain'],
-				'interval': community['interval'],
-				'startup': community['startup'] and config['ingest_on_startup'],
-				'last_post_id': 0,
-				'last_comment_id': 0,
-				'last_modlog_timestamp': 0,
-				'modlogs': None,
-				'banlogs': None
-			}
-		else:
-			ingest[community['name']].update({
-				'domain': community['standalone_domain'],
-				'interval': community['interval'],
-				'startup': community['startup'] and config['ingest_on_startup']
-			})
+	with open(COMMUNITIES_FILE, 'r') as f:
+		defaultCommunities = json.load(f)
+	for community in defaultCommunities:
+		add_community_to_ingest(
+			community['name'],
+			domain = community['standalone_domain']
+		)
 	if 'global' not in ingest:
 		ingest['global'] = {
 			'last_post_id': max([community['last_post_id'] for community in ingest.values()]),
 			'interval': config['global_interval'],
+			'last_ingested': 0,
 			'startup': True,
 			'modlogs': False,
 			'banlogs': False
 		}
 	ingest['global']['interval'] = config['global_interval']
-	ingest['global']['startup'] = config['ingest_on_startup']
 
 def save_state():
 	with open(INGEST_STATE_FILE, 'w') as f:

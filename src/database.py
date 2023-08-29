@@ -176,6 +176,9 @@ def convert_database(db1: DBRequest, db2: DBRequest):
 def _perform_db_upgrades(db: DBRequest):
 	if not db.has_field('posts', 'recovered_from_scrape'):
 		db.exec("ALTER TABLE posts ADD COLUMN recovered_from_scrape boolean DEFAULT FALSE")
+	if not db.has_field('comments', 'comment_parent_id'):
+		db.exec("ALTER TABLE comments ADD COLUMN comment_parent_id integer DEFAULT NULL")
+
 
 
 def init_database():
@@ -230,6 +233,7 @@ def init_database():
 			board_id integer NOT NULL,
 			author_id integer NOT NULL,
 			post_id integer,
+			comment_parent_id integer DEFAULT NULL,
 			raw_content text,
 			created_ms bigint,
 			archived_at_ms bigint,
@@ -247,10 +251,10 @@ def init_database():
 
 	db.exec("""
 		CREATE TABLE IF NOT EXISTS modlogs (
+			created_ms bigint PRIMARY KEY,
 			board_id integer NOT NULL,
 			moderator_id integer NOT NULL,
 			target_id integer NOT NULL,
-			created_ms bigint,
 			type text,
 			description text,
 			post_id integer DEFAULT NULL,

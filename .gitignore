@@ -5,3 +5,4 @@ __pycache__/
 *$py.class
 session_secret
 configuration/config.json
+configuration/blocked_addrs.txt

@@ -27,15 +27,15 @@ BOT_NAMES = ['Scored', 'AutoModerator', 'Filter', 'CommunityFilter', 'GlobalFilt
 
 def get_valid_domains():
 	domains = GLOBAL_DOMAINS.copy()
-	for community in st.communities:
-		if community['standalone_domain']:
-			domains.append(community['standalone_domain'])
+	for community in st.ingest.values():
+		if community.get('domain'):
+			domains.append(community['domain'])
 	return domains
 
 def get_community_from_domain(domain: str):
-	for community in st.communities:
-		if domain == community['standalone_domain']:
-			return community['name']
+	for name, community in st.ingest.items():
+		if domain == community.get('domain'):
+			return name
 
 def get_content_urls(community: str, post_id, comment_id=None):
 	urls = []
@@ -81,6 +81,15 @@ def parse_url(raw_url: str):
 				'content': contentType,
 				'page': page,
 				'normalized_path': '/u/' + username + '?type=' + contentType
+			}
+		elif path == '/communities':
+			page = helpers.safeint(params.get('page'), 1)
+			sort = params.get('sort', 'activity')
+			return {
+				'type': 'communities',
+				'page': page,
+				'sort': sort,
+				'normalized_path': '/communities' + '?sort=' + sort + '&page=' + str(page)
 			}
 		else:
 			if domain and domain not in GLOBAL_DOMAINS:
@@ -155,7 +164,7 @@ def merge_post_with_archived(db: database.DBRequest, remote_post: dict, archived
 		'uuid': remote_post['uuid'],
 		'author': remote_post['author'],
 		'community': remote_post['community'],
-		'created': remote_post.get('created', 0),
+		'created': remote_post.get('created', archived_post.created_ms if archived_post else 0),
 		'is_admin': remote_post.get('is_admin', False),
 		'is_moderator': remote_post.get('is_moderator', False),
 		'is_removed': remote_post.get('is_removed', False),
@@ -191,7 +200,8 @@ def merge_post_with_archived(db: database.DBRequest, remote_post: dict, archived
 			post['type'] = archived_post.type
 			post['link'] = archived_post.link
 			post['domain'] = urllib.parse.urlparse(archived_post.link).netloc
-			post['preview'] = archived_post.preview
+			if not post['preview']:
+				post['preview'] = archived_post.preview
 		post['ban'] = {
 			'is_banned': bool(archived_post.is_banned),
 			'is_suspended': bool(archived_post.is_suspended),
@@ -236,7 +246,7 @@ def merge_comment_with_archived(db: database.DBRequest, remote_comment: dict, ar
 		'uuid': remote_comment['uuid'],
 		'author': remote_comment['author'],
 		'community': remote_comment['community'],
-		'created': remote_comment.get('created', 0),
+		'created': remote_comment.get('created', archived_comment.created_ms if archived_comment else 0),
 		'is_admin': remote_comment.get('is_admin', False),
 		'is_moderator': remote_comment.get('is_moderator', False),
 		'is_removed': remote_comment.get('is_removed', False),
@@ -717,6 +727,9 @@ def fetch_profile_removedcontent(db: database.DBRequest, username: str, from_pos
 
 
 def fetch_new_feed(db: database.DBRequest, community: str, from_uuid: str = None):
+	modlog_status = 'none'
+	if community in st.ingest:
+		modlog_status = 'full' if st.ingest[community]['modlogs'] else 'bans' if st.ingest[community]['banlogs'] else 'none'
 	resp = scoredapi.apireq('GET', '/api/v2/post/newv2.json', {
 		'community': community,
 		'from': from_uuid
@@ -781,5 +794,6 @@ def fetch_new_feed(db: database.DBRequest, community: str, from_uuid: str = None
 
 	return {
 		'posts': sorted(list(postsById.values()), key=lambda p: p['id'], reverse=True),
+		'modlog_status': modlog_status,
 		'has_more_entries': resp.get('has_more_entries', True)
 	}

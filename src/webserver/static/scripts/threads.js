@@ -33,6 +33,9 @@ function hideLoadingSpinner() {
 	if (document.getElementById('profile') != null) {
 		document.getElementById('profile').hidden = false;
 	}
+	if (document.getElementById('communities') != null) {
+		document.getElementById('communities').hidden = false;
+	}
 }
 
 
@@ -344,6 +347,9 @@ function renderItemAttributes(type, item, data) {
 		} else if (data.removal_source.startsWith('spamFilter')) {
 			var message = 'Removed by platform-wide filter';
 			icon.innerHTML = '<i class="fa-solid fa-filter"></i>';
+		} else if (data.removal_source == 'deleted') {
+			var message = 'Removed before deletion';
+			icon.innerHTML = '<i class="fa-solid fa-comment-slash"></i>';
 		} else {
 			var message = 'Removed';
 			icon.innerHTML = '<i class="fa-solid fa-comment-slash"></i>';
@@ -366,9 +372,11 @@ function renderItemAttributes(type, item, data) {
 			time.innerText = ' ' + timeAgo(data.moderation.removed_at / 1000);
 			attrsStatus.appendChild(time);
 		}
-		var text = document.createElement('i');
-		text.innerText = '[' + data.removal_source + ']';
-		attrsStatus.appendChild(text);
+		if (data.removal_source && data.removal_source != 'deleted') {
+			var text = document.createElement('i');
+			text.innerText = '[' + data.removal_source + ']';
+			attrsStatus.appendChild(text);
+		}
 	} else if (data.moderation.approved_at || isRecovered && !data.is_removed && !data.is_deleted) {
 		var icon = document.createElement('span');
 		icon.className = 'icon approved';
@@ -674,6 +682,8 @@ function renderFeed(urlinfo, posts, has_more_entries) {
 }
 
 function onLoadFetchFeed(urlinfo) {
+	document.getElementById('feed-community').innerText = '/c/' + urlinfo.community;
+	document.getElementById('feed-community').href = '/c/' + urlinfo.community;
 	document.getElementById('loading-text').innerText = 'Fetching feed...';
 	ajaxRequest('GET', '/ajax/feed.json', {
 		'community': urlinfo.community,
@@ -683,6 +693,15 @@ function onLoadFetchFeed(urlinfo) {
 		if ('error' in response) {
 			dispError(response.error);
 		} else {
+			if (response.modlog_status == 'full') {
+				document.getElementById('modlog-link').innerText = 'Mod log';
+				document.getElementById('modlog-link').hidden = false;
+			} else if (response.modlog_status == 'bans') {
+				document.getElementById('modlog-link').innerText = 'Ban log';
+				document.getElementById('modlog-link').hidden = false;
+			} else {
+				document.getElementById('modlog-link').hidden = true;
+			}
 			setTimeout(function () {
 				renderFeed(urlinfo, response.posts, response.has_more_entries);
 			}, 1000);
@@ -851,7 +870,7 @@ function profileLoadMore(user, from_post, from_comment) {
 			dispError(response.error);
 		} else {
 			hideLoadingSpinner();
-			for (let i = 0; i < response.content.length; i++) {
+			for (let i = response.content.length - 1; i >= 0; i--) {
 				var item = response.content[i];
 				if ('title' in item) {
 					var rendered = renderPost(item);
@@ -943,6 +962,122 @@ function onLoadFetchProfile(urlinfo) {
 
 
 
+// Communities
+
+function renderCommunity(data) {
+	var community = document.createElement('div');
+	community.className = 'community';
+	community.setAttribute('data-visibility', data.visibility);
+	community.innerHTML = html`
+		<div class="left">
+			<a href="/c/${ data.name }">
+				<div class="icon-circle"></div>
+			</a>
+		</div>
+		<div class="right">
+			<div class="name">
+				<a href="/c/${ data.name }">
+					/c/${ data.name }
+				</a>
+			</div>
+			<div class="description"></div>
+			<div class="status"></div>
+			<div class="debug">
+				<span>Modlog: ${ data.modlog_status }</span>
+				<br>
+				<span>Interval: <span title="${ data.interval }">${ timeDuration(data.interval) }</span></span>
+				<br>
+				<span>Last ingest: <span title="${ isoTimeFromMs(data.last_ingested * 1000) }"></span>${ timeAgo(data.last_ingested) }</span>
+			</div>
+		</div>
+	`;
+	if (data.has_icon) {
+		var icon = document.createElement('img');
+		icon.src = 'https://img.scored.co/community/' + data.name.toLowerCase() + '-icon-32x32.png';
+		community.querySelector('.icon-circle').appendChild(icon);
+	}
+	if (data.visibility == 'unlisted') {
+		var span = document.createElement('span');
+		span.className = 'status-unlisted';
+		span.innerText = 'unlisted';
+		community.querySelector('.status').appendChild(span);
+	}
+	if (data.visibility == 'restricted') {
+		var span = document.createElement('span');
+		span.className = 'status-restricted';
+		span.innerText = 'restricted';
+		community.querySelector('.status').appendChild(span);
+	}
+	if (!data.app_safe) {
+		var span = document.createElement('span');
+		span.className = 'status-notappsafe';
+		span.innerText = 'hidden from app';
+		community.querySelector('.status').appendChild(span);
+	}
+	community.querySelector('.description').innerText = data.description;
+	return community;
+}
+
+function renderCommunityList(urlinfo, content, has_more_entries) {
+	var countTotal = 0;
+	var countRestricted = 0;
+	var countUnlisted = 0;
+	var countAppUnsafe = 0;
+	
+	console.log(urlinfo)
+	document.getElementById('communities-content').innerHTML = '';
+	document.getElementById('loading-text').innerText = 'Rendering community list...';
+	document.getElementById('nav-btns').hidden = false;
+	for (let i = 0; i < content.length; i++) {
+		document.getElementById('communities-content').appendChild(renderCommunity(content[i]));
+		countTotal++;
+		if (content[i].visibility == 'unlisted') countUnlisted++;
+		if (content[i].visibility == 'restricted') countRestricted++;
+		if (!content[i].app_safe) countAppUnsafe++;
+	}
+	var unlistedPercent = countTotal > 0 ? Math.round((countUnlisted / countTotal) * 100) : 0;
+	var restrictedPercent = countTotal > 0 ? Math.round((countRestricted / countTotal) * 100) : 0;
+	var appUnsafePercent = countTotal > 0 ? Math.round((countAppUnsafe / countTotal) * 100) : 0;
+	document.getElementById('item-count').innerText = countTotal + ' communities on page';
+	document.getElementById('item-count-restricted').innerText = countRestricted + ' restricted (' + restrictedPercent + '%)';
+	document.getElementById('item-count-removed').innerText = countUnlisted + ' unlisted or closed (' + unlistedPercent + '%)';
+	document.getElementById('item-count-hidden').innerText = countAppUnsafe + ' not app-safe (' + appUnsafePercent + '%)';
+	if (urlinfo.page > 1) {
+		document.getElementById('btn-prevpage').style = '';
+		document.getElementById('btn-prevpage').href = '?sort=' + urlinfo.sort + '&page=' + (urlinfo.page - 1);
+	} else {
+		document.getElementById('btn-prevpage').style = 'display: none;';
+	}
+	if (has_more_entries) {
+		document.getElementById('btn-nextpage').style = '';
+		document.getElementById('btn-nextpage').href = '?sort=' + urlinfo.sort + '&page=' + (urlinfo.page + 1);
+	} else {
+		document.getElementById('btn-nextpage').style = 'display: none;';
+	}
+	hideLoadingSpinner();
+}
+
+function onLoadFetchCommunities(urlinfo) {
+	document.getElementById('loading-text').innerText = 'Fetching communities...';
+	ajaxRequest('GET', '/ajax/communities.json', {
+		'sort': urlinfo.sort,
+		'page': urlinfo.page
+	}, function (response, code) {
+		console.log(response)
+		if ('error' in response) {
+			dispError(response.error);
+		} else {
+			setTimeout(function () {
+				renderCommunityList(urlinfo, response.communities, response.has_more_entries);
+			}, 1000);
+		}
+	});
+}
+
+
+
+// OnLoad
+
 function onLoadFetchURLInfo() {
 	document.getElementById('loading-text').innerText = 'Fetching URL info...';
 	ajaxRequest('GET', '/ajax/parseurl.json', {
@@ -956,6 +1091,8 @@ function onLoadFetchURLInfo() {
 			onLoadFetchProfile(response);
 		} else if (response.type == 'feed') {
 			onLoadFetchFeed(response);
+		} else if (response.type == 'communities') {
+			onLoadFetchCommunities(response);
 		}
 	});
 }

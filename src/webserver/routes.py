@@ -15,10 +15,7 @@ from webserver import wapp
 
 @wapp.route('GET', '/')
 def root_page():
-	return flask.render_template(
-		'pages/front.html',
-		supportedCommunities = [c['name'] for c in st.communities]
-	)
+	return flask.render_template('pages/front.html')
 
 
 @wapp.route('GET', '/admin-dashboard/')
@@ -61,6 +58,8 @@ def scored_path(path):
 		return flask.render_template('pages/feed.html')
 	elif params['type'] == 'profile':
 		return flask.render_template('pages/profile.html')
+	elif params['type'] == 'communities':
+		return flask.render_template('pages/communities.html')
 	else:
 		flask.abort(404)
 
@@ -134,6 +133,37 @@ def ajax_get_feed():
 			return flask.jsonify({
 				'error': str(e)
 			})
+		
+
+@wapp.route('GET', '/ajax/communities.json')
+def ajax_get_communities():
+	st.enforce_api_ratelimit(flask.request.remote_addr)
+	page = helpers.safeint(flask.request.args.get('page'), 1)
+	sort = flask.request.args.get('sort', 'activity')
+	communities = [
+		{
+			'name': key,
+			'modlog_status': 'full' if c['modlogs'] else 'bans' if c['banlogs'] else 'none',
+			'interval': c.get('interval', 0),
+			'last_ingested': c.get('last_ingested', 0),
+			'description': c.get('description', '').replace('\r', '').replace('\n', ' '),
+			'has_icon': c.get('has_icon', False),
+			'app_safe': c.get('app_safe', True),
+			'visibility': c.get('visibility', 'public')
+		}
+		for key, c in st.ingest.items()
+		if key != 'global'
+	]
+	if sort == 'activity':
+		communities.sort(key=lambda x: x['interval'])
+	else:
+		communities.sort(key=lambda x: x['name'])
+	return flask.jsonify({
+		'communities': communities[(page-1)*25:(page-1)*25+25],
+		'page': page,
+		'has_more_entries': (page-1)*25+25 < len(communities)
+	})
+
 
 
 @wapp.route('POST', '/ajax/removal-request')

@@ -86,6 +86,7 @@ def add_comment(db: database.DBRequest, community: str, comment: dict):
 				board_id,
 				author_id,
 				post_id,
+				comment_parent_id,
 				raw_content,
 				created_ms,
 				archived_at_ms,
@@ -93,12 +94,13 @@ def add_comment(db: database.DBRequest, community: str, comment: dict):
 				removed_by,
 				approved_at_ms,
 				approved_by
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 			""",
 			comment['id'],
 			board_id,
 			author_id,
 			comment['parent_id'],
+			comment['comment_parent_id'],
 			comment['raw_content'].replace('\r\n', '\n'),
 			comment['created'],
 			time.time_ns() // 1000,
@@ -182,28 +184,36 @@ def add_modlog_record(db: database.DBRequest, community: str, record: dict):
 	comment_id = record['commentId']
 	description = record['description'] if len(record['description']) < 200 else record['description'] + '...'
 	
-	db.exec(
-		"""
-		INSERT INTO modlogs (
+	IntegrityError = db.get_IntegrityError()
+	try:
+		db.exec(
+			"""
+			INSERT INTO modlogs (
+				board_id,
+				moderator_id, 
+				target_id,
+				created_ms,
+				type,
+				description,
+				post_id,
+				comment_id
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+			""",
 			board_id,
-			moderator_id, 
+			moderator_id,
 			target_id,
-			created_ms,
-			type,
-			description,
-			post_id,
-			comment_id
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-		""",
-		board_id,
-		moderator_id,
-		target_id,
-		record['created'],
-		record['type'],
-		record['description'],
-		record['postId'] if record['postId'] else None,
-		record['commentId'] if record['commentId'] else None
-	)
+			record['created'],
+			record['type'],
+			record['description'],
+			record['postId'] if record['postId'] else None,
+			record['commentId'] if record['commentId'] else None
+		)
+	except IntegrityError:
+		logger.logwrn('Modlog record %d already in database' % record['created'])
+		db.rollback()
+		return
+	else:
+		db.commit()
 
 	if record['type'] in ('ban', 'unban'):
 		desc: str = record['description']

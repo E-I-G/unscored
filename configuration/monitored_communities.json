@@ -1,128 +1,34 @@
 [
 	{
 		"name": "ConsumeProduct",
-		"standalone_domain": null,
-		"interval": 1200,
-		"startup": true
+		"standalone_domain": null
 	},
 	{
 		"name": "TheDonald",
-		"standalone_domain": "patriots.win",
-		"interval": 300,
-		"startup": true
+		"standalone_domain": "patriots.win"
 	},
 	{
 		"name": "GreatAwakening",
-		"standalone_domain": "greatawakening.win",
-		"interval": 300,
-		"startup": true
+		"standalone_domain": "greatawakening.win"
 	},
 	{
 		"name": "Conspiracies",
-		"standalone_domain": "conspiracies.win",
-		"interval": 600,
-		"startup": true
+		"standalone_domain": "conspiracies.win"
 	},
 	{
 		"name": "KotakuInAction",
-		"standalone_domain": "kotakuinaction2.win",
-		"interval": 14400,
-		"startup": false
+		"standalone_domain": "kotakuinaction2.win"
 	},
 	{
 		"name": "KotakuInAction2",
-		"standalone_domain": "kotakuinaction2.win",
-		"interval": 1200,
-		"startup": true
+		"standalone_domain": "kotakuinaction2.win"
 	},
 	{
 		"name": "WSBets",
-		"standalone_domain": "wsbets.win",
-		"interval": 14400,
-		"startup": false
+		"standalone_domain": "wsbets.win"
 	},
 	{
-		"name": "IP2Always",
-		"standalone_domain": null,
-		"interval": 3600,
-		"startup": true
-	},
-	{
-		"name": "NoNewNormal",
-		"standalone_domain": null,
-		"interval": 2400,
-		"startup": true
-	},
-	{
-		"name": "Meta",
-		"standalone_domain": null,
-		"interval": 3600,
-		"startup": true
-	},
-	{
-		"name": "Funny",
-		"standalone_domain": null,
-		"interval": 2000,
-		"startup": true
-	},
-	{
-		"name": "Memes",
-		"standalone_domain": null,
-		"interval": 3600,
-		"startup": false
-	},
-	{
-		"name": "Gaming",
-		"standalone_domain": null,
-		"interval": 3600,
-		"startup": false
-	},
-	{
-		"name": "Technology",
-		"standalone_domain": null,
-		"interval": 7200,
-		"startup": false
-	},
-	{
-		"name": "Animals",
-		"standalone_domain": null,
-		"interval": 7200,
-		"startup": false
-	},
-	{
-		"name": "AskScored",
-		"standalone_domain": null,
-		"interval": 7200,
-		"startup": false
-	},
-	{
-		"name": "Christianity",
-		"standalone_domain": null,
-		"interval": 7200,
-		"startup": false
-	},
-	{
-		"name": "General",
-		"standalone_domain": null,
-		"interval": 7200,
-		"startup": true
-	},
-	{
-		"name": "ourgreateststrength",
-		"standalone_domain": null,
-		"interval": 7200,
-		"startup": false
-	},
-	{
-		"name": "Health",
-		"standalone_domain": null,
-		"interval": 9000,
-		"startup": false
-	},
-	{
-		"name": "MGTOW",
-		"standalone_domain": null,
-		"interval": 1800,
-		"startup": true
+		"name": "OmegaCanada",
+		"standalone_domain": "omegacanada.win"
 	}
 ]

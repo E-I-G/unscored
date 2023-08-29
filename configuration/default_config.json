@@ -26,11 +26,12 @@
 	"request_limit_feed": 15,
 	"request_limit_profile": 5,
 	"ingest_limit": 25,
+	"max_missing_ids": 50,
 	"global_interval": 300,
+	"backingest_cooldown": 4,
 	"caching": true,
 	"purge_deleted": false,
 	"show_deleted": true,
 	"reporting_enabled": true,
-	"ingest_enabled": true,
-	"ingest_on_startup": true
+	"ingest_enabled": true
 }

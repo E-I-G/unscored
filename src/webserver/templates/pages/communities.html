@@ -11,10 +11,11 @@
 {% endblock %}
 
 {% block contents %}
-<div id="feed-header">
-	<a href="" id="feed-community"></a>
+<div id="communities-header">
+	Sort:
+	<a href="?sort=activity">Activity</a>
 	|
-	<a href="logs/" id="modlog-link" hidden>Mod log</a>
+	<a href="?sort=alphabetical">A-Z</a>
 </div>
 
 <div id="spinner">
@@ -36,19 +37,26 @@
 </div>
 <div id="status-container" hidden>
 </div>
-<main id="feed" data-disptype="feed" hidden>
+<main id="communities" data-disptype="communities" hidden>
 	<div id="summary">
 		<div>
 			<div>
-				<span id="item-count">0 posts on page</span>
+				<span id="item-count">0 communities on page</span>
 			</div>
 			<div>
-				<span id="item-count-removed">0 removed (0%)</span>
+				<span id="item-count-removed">0 unlisted or closed (0%)</span>
+			</div>
+			<div>
+				<span id="item-count-restricted">0 restricted (0%)</span>
+			</div>
+			<div>
+				<span id="item-count-hidden">0 not app-safe (0%)</span>
 			</div>
 		</div>
 	</div>
-	<div id="posts"></div>
+	<div id="communities-content"></div>
 	<div id="nav-btns" hidden>
+		<a href="" class="btn-page" id="btn-prevpage">&lt; Previous</a>
 		<a href="" class="btn-page" id="btn-nextpage">Next &gt;</a>
 	</div>
 </main>

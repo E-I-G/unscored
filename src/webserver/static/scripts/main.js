@@ -200,8 +200,19 @@ function updateTimeAgoValues() {
 	}
 }
 
+
 function zeroPad(num, len) {
 	return num.toString().padStart(len, '0');
+}
+
+function timeDuration(seconds) {
+	days = Math.floor(seconds / (24*60*60));
+	seconds %= 24*60*60;
+	hours = Math.floor(seconds / (60*60));
+	seconds %= 60*60;
+	minutes = Math.floor(seconds / 60);
+	seconds %= 60;
+	return days + 'd ' + zeroPad(hours, 2) + ':' + zeroPad(minutes, 2) + ':' + zeroPad(seconds, 2);
 }
 
 function isoTimeFromMs(timestamp) {
