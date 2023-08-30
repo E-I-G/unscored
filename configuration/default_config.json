@@ -26,6 +26,7 @@
 	"request_limit_feed": 15,
 	"request_limit_profile": 5,
 	"ingest_limit": 25,
+	"modlog_ingest_limit": 200,
 	"max_missing_ids": 50,
 	"global_interval": 300,
 	"backingest_cooldown": 4,

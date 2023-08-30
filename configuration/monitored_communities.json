@@ -30,5 +30,13 @@
 	{
 		"name": "OmegaCanada",
 		"standalone_domain": "omegacanada.win"
+	},
+	{
+		"name": "TuckerCarlson",
+		"standalone_domain": "tuckercarlson.win"
+	},
+	{
+		"name": "Ancaps",
+		"standalone_domain": "ancaps.win"
 	}
 ]

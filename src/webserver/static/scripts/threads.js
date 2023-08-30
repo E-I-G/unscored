@@ -36,6 +36,9 @@ function hideLoadingSpinner() {
 	if (document.getElementById('communities') != null) {
 		document.getElementById('communities').hidden = false;
 	}
+	if (document.getElementById('modlog') != null) {
+		document.getElementById('modlog').hidden = false;
+	}
 }
 
 
@@ -684,6 +687,7 @@ function renderFeed(urlinfo, posts, has_more_entries) {
 function onLoadFetchFeed(urlinfo) {
 	document.getElementById('feed-community').innerText = '/c/' + urlinfo.community;
 	document.getElementById('feed-community').href = '/c/' + urlinfo.community;
+	document.getElementById('modlog-link').href = '/c/' + urlinfo.community + '/logs';
 	document.getElementById('loading-text').innerText = 'Fetching feed...';
 	ajaxRequest('GET', '/ajax/feed.json', {
 		'community': urlinfo.community,
@@ -842,6 +846,9 @@ function renderThread(urlinfo, post, comments) {
 function onLoadFetchThread(urlinfo) {
 	console.log('Fetching thread');
 	document.getElementById('loading-text').innerText = 'Fetching thread...';
+	document.getElementById('feed-community').innerText = '/c/' + urlinfo.community;
+	document.getElementById('feed-community').href = '/c/' + urlinfo.community;
+	document.getElementById('modlog-link').href = '/c/' + urlinfo.community + '/logs';
 	ajaxRequest('GET', '/ajax/thread.json', {
 		'post_id': urlinfo.post_id
 	}, function (response, code) {
@@ -1076,6 +1083,199 @@ function onLoadFetchCommunities(urlinfo) {
 
 
 
+
+// Mod log
+
+const ACTION_DESCRIPTIONS = {
+	'removepost': 'removed post',
+	'approvepost': 'approved post',
+	'removecomment': 'removed comment',
+	'approvecomment': 'approved post',
+	'lockpost': 'locked post',
+	'unlockedpost': 'unlocked post',
+	'ignoreposts': 'ignored reports on post',
+	'ignorecomments': 'ignored reports on comment',
+	'ban': 'banned user',
+	'unban': 'unbanned user',
+};
+
+function renderModlogRecord(community, data) {
+	var record = document.createElement('div');
+	record.className = 'modlog-record';
+	var r_time = document.createElement('span');
+	r_time.className = 'timeago';
+	r_time.setAttribute('data-timestamp', Math.floor(data.created_ms / 1000));
+	r_time.title = isoTimeFromMs(data.created_ms);
+	r_time.innerText = timeAgo(Math.floor(data.created_ms / 1000));
+	record.appendChild(r_time);
+	record.appendChild(document.createTextNode(' '));
+	if (data.moderator) {
+		var r_mod = document.createElement('a');
+		r_mod.href = '/u/' + data.moderator;
+		r_mod.target = '_blank';
+	} else {
+		var r_mod = document.createElement('span');
+	}
+	r_mod.className = 'moderator';
+	r_mod.innerText = data.moderator;
+	record.appendChild(r_mod);
+	record.appendChild(document.createTextNode(' '));
+	var r_action = document.createElement('span');
+	r_action.className = 'action';
+	r_action.innerText = data.type in ACTION_DESCRIPTIONS ? ACTION_DESCRIPTIONS[data.type] : data.type;
+	record.appendChild(r_action);
+	if (data.post_id) {
+		record.appendChild(document.createTextNode(' by '));
+	} else {
+		record.appendChild(document.createTextNode(' '));
+	}
+	var r_target = document.createElement('a');
+	r_target.className = 'target';
+	r_target.href = '/u/' + data.target + '?type=removed'
+	r_target.target = '_blank';
+	r_target.innerText = data.target;
+	record.appendChild(r_target);
+	record.appendChild(document.createTextNode(' - '));
+	if (data.post_id) {
+		var r_description = document.createElement('a');
+		if (data.comment_id) {
+			r_description.href = '/c/' + community + '/p/' + data.post_id + '/x/c/' + data.comment_id;
+		} else {
+			r_description.href = '/c/' + community + '/p/' + data.post_id;
+		}
+		r_description.target = '_blank';
+	} else {
+		var r_description = document.createElement('span');
+	}
+	r_description.className = 'description'
+	if (data.description) {
+		var desc = document.createElement('span');
+		desc.innerText = data.description;
+		r_description.appendChild(desc);
+	} else if (data.post_id) {
+		var desc = document.createElement('i');
+		desc.innerText = 'link';
+		r_description.appendChild(desc);
+	}
+	record.appendChild(r_description);
+	var r_content = document.createElement('div');
+	r_content.className = 'item-content';
+	if (data.post_id) {
+		r_content.innerHTML = '<a href="javascript:void(0);" class="btn-show">Show content</a>';
+		r_content.querySelector('.btn-show').onclick = function () {
+			r_content.querySelector('.btn-show').remove();
+			if (data.comment_id) {
+				ajaxRequest('GET', '/ajax/comment.json', {
+					'post_id': data.post_id,
+					'comment_id': data.comment_id
+				}, function (response, code) {
+					var comment = renderComment(response.comment);
+					comment.querySelector('.parent').remove();
+					r_content.appendChild(comment);
+					r_content.classList.add('rendered');
+				});
+			} else {
+				ajaxRequest('GET', '/ajax/post.json', {
+					'post_id': data.post_id
+				}, function (response, code) {
+					r_content.appendChild(renderPost(response.post));
+					r_content.classList.add('rendered');
+				});
+			}
+		};
+		record.appendChild(r_content);
+	}
+	return record;
+}
+
+function renderModlog(urlinfo, content, moderators, has_more_entries) {
+	console.log(urlinfo)
+
+	var modfilter = document.getElementById('filter-moderator');
+	if (moderators == null) {
+		modfilter.disabled = true;
+	} else {
+		var g_moderators = document.getElementById('filter-moderator-moderators');
+		for (let i = 0; i < moderators.moderators.length; i++) {
+			var opt = document.createElement('option');
+			opt.value = moderators.moderators[i];
+			opt.innerText = moderators.moderators[i];
+			g_moderators.appendChild(opt);
+		}
+		var g_admins = document.getElementById('filter-moderator-admins');
+		for (let i = 0; i < moderators.admins.length; i++) {
+			var opt = document.createElement('option');
+			opt.value = moderators.admins[i];
+			opt.innerText = moderators.admins[i];
+			g_admins.appendChild(opt);
+		}
+		var g_filters = document.getElementById('filter-moderator-filters');
+		for (let i = 0; i < moderators.filters.length; i++) {
+			var opt = document.createElement('option');
+			opt.value = moderators.filters[i];
+			opt.innerText = moderators.filters[i];
+			g_filters.appendChild(opt);
+		}
+	}
+	if (modfilter.querySelector('option[value="' + urlinfo.moderator + '"]')) {
+		modfilter.querySelector('option[value="' + urlinfo.moderator + '"]').selected = true;
+	}
+
+	var actionfilter = document.getElementById('filter-action');
+	if (actionfilter.querySelector('option[value="' + urlinfo.action + '"]')) {
+		actionfilter.querySelector('option[value="' + urlinfo.action + '"]').selected = true;
+	}
+
+	var targetfilter = document.getElementById('filter-target');
+	if (urlinfo.target && urlinfo.target != '*') {
+		targetfilter.value = urlinfo.target;
+	}
+
+	for (let i = 0; i < content.length; i++) {
+		document.getElementById('modlog-content').appendChild(
+			renderModlogRecord(urlinfo.community, content[i])
+		);
+	}
+	if (urlinfo.page > 1) {
+		document.getElementById('btn-prevpage').style = '';
+		document.getElementById('btn-prevpage').href = '?type=' + urlinfo.action + '&moderator=' + urlinfo.moderator + '&target=' + urlinfo.target + '&page=' + (urlinfo.page - 1);
+	} else {
+		document.getElementById('btn-prevpage').style = 'display: none;';
+	}
+	if (has_more_entries) {
+		document.getElementById('btn-nextpage').style = '';
+		document.getElementById('btn-nextpage').href = '?type=' + urlinfo.action + '&moderator=' + urlinfo.moderator + '&target=' + urlinfo.target + '&page=' + (urlinfo.page + 1);
+	} else {
+		document.getElementById('btn-nextpage').style = 'display: none;';
+	}
+	hideLoadingSpinner();
+}
+
+function onLoadFetchModlog(urlinfo) {
+	document.getElementById('loading-text').innerText = 'Fetching mod log...';
+	document.getElementById('feed-community').innerText = '/c/' + urlinfo.community;
+	document.getElementById('feed-community').href = '/c/' + urlinfo.community;
+	document.getElementById('modlog-link').href = '/c/' + urlinfo.community + '/logs';
+	ajaxRequest('GET', '/ajax/logs.json', {
+		'community': urlinfo.community,
+		'page': urlinfo.page,
+		'action': urlinfo.action,
+		'moderator': urlinfo.moderator,
+		'target': urlinfo.target
+	}, function (response, code) {
+		console.log(response)
+		if ('error' in response) {
+			dispError(response.error);
+		} else {
+			setTimeout(function () {
+				renderModlog(urlinfo, response.records, response.moderators, response.has_more_entries);
+			}, 1000);
+		}
+	});
+}
+
+
+
 // OnLoad
 
 function onLoadFetchURLInfo() {
@@ -1093,6 +1293,8 @@ function onLoadFetchURLInfo() {
 			onLoadFetchFeed(response);
 		} else if (response.type == 'communities') {
 			onLoadFetchCommunities(response);
+		} else if (response.type == 'modlog') {
+			onLoadFetchModlog(response);
 		}
 	});
 }

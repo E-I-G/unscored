@@ -118,6 +118,21 @@ def parse_url(raw_url: str):
 					'from_uuid': params.get('from'),
 					'normalized_path': normalized_path
 				}
+			elif path == '/logs':
+				page = helpers.safeint(params.get('page'), 1)
+				action = params.get('type', '*')
+				moderator = params.get('moderator', '*')
+				target = params.get('target', '*')
+				normalized_path = '/c/%s/logs?type=%s&moderator=%s&target=%s&page=%d' % (community, action, moderator, target, page)
+				return {
+					'type': 'modlog',
+					'community': community,
+					'action': action.strip() if action.strip() else '*',
+					'moderator': moderator.strip() if moderator.strip() else '*',
+					'target': target.strip() if target.strip() else '*',
+					'page': page,
+					'normalized_path': normalized_path
+				}
 			elif path.startswith('/p/'):
 				result = re.findall('^/p/([^/]+)(?:/[^/]+/c/([^/]+)?)?', path)
 				if not result:
@@ -315,9 +330,6 @@ def merge_comment_with_archived(db: database.DBRequest, remote_comment: dict, ar
 
 
 
-
-
-
 def fetch_thread(db: database.DBRequest, post_id: int):
 	archived_post = db.queryrow("""
 		SELECT
@@ -374,6 +386,25 @@ def fetch_thread(db: database.DBRequest, post_id: int):
 			for comment in sorted(resp['comments'], key=lambda c: c['id'])
 		]
 	}
+
+
+
+def fetch_single_post(db: database.DBRequest, post_id: int):
+	data = fetch_thread(db, post_id)
+	return {
+		'post': data['post']
+	}
+
+
+def fetch_single_comment(db: database.DBRequest, post_id: int, comment_id: int):
+	data = fetch_thread(db, post_id)
+	for c in data['comments']:
+		if c['id'] == comment_id:
+			return {
+				'comment': c
+			}
+	else:
+		raise RequestFailed('comment not found in thread')
 
 
 
@@ -796,4 +827,80 @@ def fetch_new_feed(db: database.DBRequest, community: str, from_uuid: str = None
 		'posts': sorted(list(postsById.values()), key=lambda p: p['id'], reverse=True),
 		'modlog_status': modlog_status,
 		'has_more_entries': resp.get('has_more_entries', True)
+	}
+
+
+BLACKLISTED_MODS = ['', 'C', 'Perun', 'GlobalFilter', 'CommunityFilter']
+def fetch_modlogs(db: database.DBRequest, community: str, page: int, action: str, moderator: str, target: str):
+	board_id = database.get_board_id(db, community, allow_insert=False)
+	if not moderator or moderator == '*':
+		moderator_id = 0
+	else:
+		moderator_id = database.get_author_id(db, moderator, allow_insert=False)
+	if not target or target == '*':
+		target_id = 0
+	else:
+		target_id = database.get_author_id(db, target, allow_insert=False)
+	q = "SELECT DISTINCT authors.name FROM modlogs INNER JOIN authors ON modlogs.moderator_id = authors.id  WHERE board_id = ?"
+	modsInLog = [row.name for row in db.query(q, board_id)]
+	if len(modsInLog) == 1 and modsInLog[0] == '':
+		moderators = None
+	else:
+		moderators = {
+			'moderators': [m for m in modsInLog if m not in BLACKLISTED_MODS],
+			'admins': ['C', 'Perun'],
+			'filters': ['GlobalFilter', 'CommunityFilter']
+		}
+
+	args = [board_id]
+	select = []
+	if action and action != '*':
+		select.append('modlogs.type = ?')
+		args.append(action)
+		print(action)
+	if moderator_id:
+		select.append('modlogs.moderator_id = ?')
+		args.append(moderator_id)
+	if target_id:
+		select.append('modlogs.target_id = ?')
+		args.append(target_id)
+	
+	q = """
+		SELECT
+			modlogs.created_ms,
+			moderators.name AS moderator,
+			targets.name AS target,
+			modlogs.type,
+			modlogs.description,
+			modlogs.post_id,
+			modlogs.comment_id
+		FROM modlogs
+		INNER JOIN authors AS moderators ON moderators.id = modlogs.moderator_id
+		INNER JOIN authors AS targets ON targets.id = modlogs.target_id
+		WHERE board_id = ? %s
+		ORDER BY modlogs.created_ms DESC
+		LIMIT ?
+		OFFSET ?
+	""" % ('AND ' + ' AND '.join(select) if select else '')
+
+	LIMIT = 25
+	args.append(LIMIT)
+	args.append((page - 1) * LIMIT)
+	
+	rows = db.query(q, *args)
+	return {
+		'records': [
+			{
+				'created_ms': row.created_ms,
+				'moderator': row.moderator,
+				'target': row.target,
+				'type': row.type,
+				'description': row.description.replace('\r', '').replace('\n', ' '),
+				'post_id': row.post_id,
+				'comment_id': row.comment_id
+			}
+			for row in rows
+		],
+		'moderators': moderators,
+		'has_more_entries': len(rows) == 25
 	}

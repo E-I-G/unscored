@@ -101,6 +101,7 @@ def scrape_from_page(post: dict):
 	logger.logdebug('Attempting to recover post %d by scraping thread webpage' % post['id'])
 	url = 'https://' + st.ingest[post['community']]['domain'] + '/p/' + post['uuid']
 	main = scoredapi.scrape_page(url, {}, 'main')
+	scraped = error = None
 	if main:
 		scraped = main.select_one('.post')
 		error = main.select_one('.error')
@@ -226,6 +227,7 @@ def ingest_complete_modlog(db: database.DBRequest, community: str):
 	records = []
 
 	page = 1
+	previousTimestamp = 0
 	while True:
 		resp = scoredapi.apireq('GET', endpoint, {
 			'community': community,
@@ -234,9 +236,16 @@ def ingest_complete_modlog(db: database.DBRequest, community: str):
 		page += 1
 		if resp['status'] and len(resp['logs']) > 0:
 			for record in resp['logs']:
-				archive.add_modlog_record(db, community, record)
+				if record['created'] == previousTimestamp:
+					continue
+				if record['type'] in archive.MONITORED_MODLOG_ACTIONS:
+					previousTimestamp = record['created']
+					records.append(record)
 		else:
 			break
+	
+	for record in reversed(records):
+		archive.add_modlog_record(db, community, record)
 
 
 
@@ -433,9 +442,9 @@ def ingest_community_modlogs(db: database.DBRequest, community: str, ban_logs=Fa
 	logger.logdebug('Mod log endpoint for %s: %s' % (community, endpoint))
 	records = []
 
-	while reqCount < st.config['ingest_limit']:
+	while reqCount < st.config['modlog_ingest_limit']:
 		reqCount += 1
-		logger.logtrace('Request #%d (limit=%d)' % (reqCount, st.config['ingest_limit']))
+		logger.logtrace('Request #%d (limit=%d)' % (reqCount, st.config['modlog_ingest_limit']))
 		resp = scoredapi.apireq('GET', endpoint, {
 			'community': community,
 			'page': page

@@ -11,6 +11,12 @@
 {% endblock %}
 
 {% block contents %}
+<div id="feed-header">
+	<a href="" id="feed-community"></a>
+	|
+	<a href="" id="modlog-link" hidden>Mod log</a>
+</div>
+
 <div id="spinner">
 	<div class="gears" id="two-gears">
 		<div class="gears-container">
@@ -22,12 +28,14 @@
 		Loading...
 	</div>
 </div>
+
 <div id="error-container" hidden>
 	<div id="error">
 		<i class="fa-solid fa-triangle-exclamation"></i>
 		<span id="error-message">Error</span>
 	</div>
 </div>
+
 <main id="thread" data-disptype="thread" hidden>
 	<div id="post"></div>
 	<div id="summary">

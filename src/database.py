@@ -148,19 +148,23 @@ class DBRequest:
 boardIds = {}
 authorIds = {}
 
-def get_board_id(db: DBRequest, community: str):
+def get_board_id(db: DBRequest, community: str, allow_insert=True):
 	if community in boardIds:
 		return boardIds[community]
 	else:
+		if not allow_insert:
+			return 0
 		id = db.queryval("INSERT INTO boards (name) VALUES (?) RETURNING id", community)
 		boardIds[community] = id
 		logger.logdebug('Assigned id %d to board %s' % (id, community))
 		return id
 	
-def get_author_id(db: DBRequest, author: str):
+def get_author_id(db: DBRequest, author: str, allow_insert=True):
 	if author in authorIds:
 		return authorIds[author]
 	else:
+		if not allow_insert:
+			return 0
 		id = db.queryval("INSERT INTO authors (name) VALUES (?) RETURNING id", author)
 		authorIds[author] = id
 		logger.logdebug('Assigned id %d to author %s' % (id, repr(author)))

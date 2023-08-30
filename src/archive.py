@@ -12,6 +12,10 @@ MONITORED_MODLOG_ACTIONS = [
 	'approvepost',
 	'removecomment',
 	'approvecomment',
+	'lockpost',
+	'unlockpost',
+	'ignoreposts',
+	'ignorecomments',
 	'ban',
 	'unban'
 ]

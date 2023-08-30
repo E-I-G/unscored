@@ -1,0 +1,89 @@
+{% extends "layout.html" %}
+{% block head %}
+	{{ super() }}
+	<script src="/static/lib/showdown.min.js" type="application/javascript"></script>
+	<script src="/static/lib/showdown-htmlescape.min.js" type="application/javascript"></script>
+	<script src="/static/lib/xss.min.js" type="application/javascript"></script>
+	<script src="/static/lib/showdown-xss-filter.js" type="application/javascript"></script>
+	
+	<script src="/static/scripts/threads.js?v={{ VERSION }}" type="application/javascript"></script>
+	<link rel="stylesheet" href="/static/styles/threads.css?v={{ VERSION }}">
+{% endblock %}
+
+{% block contents %}
+<div id="feed-header">
+	<a href="" id="feed-community"></a>
+	|
+	<a href="" id="modlog-link">Mod log</a>
+</div>
+
+<div id="log-filter">
+	<form action="" method="get">
+		<div>
+			<label for="filter-moderator">Moderator:</label>
+			<select id="filter-moderator" name="moderator">
+				<option value="*">Any</option>
+				<optgroup label="Moderators" id="filter-moderator-moderators"></optgroup>
+				<optgroup label="Admins" id="filter-moderator-admins"></optgroup>
+				<optgroup label="Filters" id="filter-moderator-filters"></optgroup>
+			</select>
+		</div>
+		<div>
+			<label for="filter-action">Action:</label>
+			<select id="filter-action" name="type">
+				<option value="*">Any</option>
+				<option value="ban">banned user</option>
+				<option value="unban">unbanned user</option>
+				<option value="removepost">removed post</option>
+				<option value="approvepost">approved post</option>
+				<option value="removecomment">removed comment</option>
+				<option value="lockpost">locked post</option>
+				<option value="unlockpost">unlocked post</option>
+				<option value="ignoreposts">ignored reports on post</option>
+				<option value="ignorecomments">ignored reports on comment</option>
+			</select>
+		</div>
+		<div>
+			<div>
+				<label for="filter-target">Target:</label>
+				<input type="text" id="filter-target" name="target">
+			</div>
+			<div>
+				<span class="note">(username is case-sensitive.)</span>
+			</div>
+		</div>
+		<div>
+			<input type="submit" value="Apply">
+		</div>
+	</form>
+</div>
+
+<div id="spinner">
+	<div class="gears" id="two-gears">
+		<div class="gears-container">
+			<div class="gear-rotate"></div>
+			<div class="gear-rotate-left"></div>
+		</div>
+	</div>
+	<div id="loading-text">
+		Loading...
+	</div>
+</div>
+
+<div id="error-container" hidden>
+	<div id="error">
+		<i class="fa-solid fa-triangle-exclamation"></i>
+		<span id="error-message">Error</span>
+	</div>
+</div>
+
+<div id="status-container" hidden></div>
+
+<main id="modlog" data-disptype="modlog">
+	<div id="modlog-content"></div>
+	<div id="nav-btns">
+		<a href="" class="btn-page" id="btn-prevpage">&lt; Previous</a>
+		<a href="" class="btn-page" id="btn-nextpage">Next &gt;</a>
+	</div>
+</main>
+{% endblock %}

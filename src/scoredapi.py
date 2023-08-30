@@ -1,5 +1,6 @@
 import random
 import time
+import json
 
 import eventlet
 import requests
@@ -118,7 +119,7 @@ def apireq(method: str, endpoint: str, params: dict, cache_ttl=0):
 			logger.logtrace('[Scored API] returned data')
 			try:
 				jsonResp = resp.json()
-			except requests.JSONDecodeError:
+			except Exception:
 				logger.logerr('[Scored API] returned code %d' % resp.status_code)
 				return {
 					'status': False,

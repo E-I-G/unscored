@@ -60,6 +60,8 @@ def scored_path(path):
 		return flask.render_template('pages/profile.html')
 	elif params['type'] == 'communities':
 		return flask.render_template('pages/communities.html')
+	elif params['type'] == 'modlog':
+		return flask.render_template('pages/modlog.html')
 	else:
 		flask.abort(404)
 
@@ -156,6 +158,9 @@ def ajax_get_communities():
 	]
 	if sort == 'activity':
 		communities.sort(key=lambda x: x['interval'])
+	elif sort == 'restricted':
+		communities = [c for c in communities if c['visibility'] != 'public' or not c['app_safe']]
+		communities.sort(key=lambda x: x['interval'])
 	else:
 		communities.sort(key=lambda x: x['name'])
 	return flask.jsonify({
@@ -163,6 +168,52 @@ def ajax_get_communities():
 		'page': page,
 		'has_more_entries': (page-1)*25+25 < len(communities)
 	})
+
+
+@wapp.route('GET', '/ajax/logs.json')
+def ajax_get_logs():
+	st.enforce_api_ratelimit(flask.request.remote_addr)
+	page = helpers.safeint(flask.request.args.get('page'), 1)
+	community = flask.request.args['community']
+	action = flask.request.args.get('action', '*')
+	moderator = flask.request.args.get('moderator', '*')
+	target = flask.request.args.get('target', '*')
+	with database.DBRequest() as db:
+		try:
+			return flask.jsonify(datafetch.fetch_modlogs(db, community, page, action, moderator, target))
+		except datafetch.RequestFailed as e:
+			return flask.jsonify({
+				'error': str(e)
+			})
+		
+
+
+@wapp.route('GET', '/ajax/post.json')
+def ajax_get_post():
+	st.enforce_api_ratelimit(flask.request.remote_addr)
+	post_id = helpers.safeint(flask.request.args.get('post_id'), 0)
+	with database.DBRequest() as db:
+		try:
+			return flask.jsonify(datafetch.fetch_single_post(db, post_id))
+		except datafetch.RequestFailed as e:
+			return flask.jsonify({
+				'error': str(e)
+			})
+		
+
+@wapp.route('GET', '/ajax/comment.json')
+def ajax_get_comment():
+	st.enforce_api_ratelimit(flask.request.remote_addr)
+	post_id = helpers.safeint(flask.request.args.get('post_id'), 0)
+	comment_id = helpers.safeint(flask.request.args.get('comment_id'), 0)
+	with database.DBRequest() as db:
+		try:
+			return flask.jsonify(datafetch.fetch_single_comment(db, post_id, comment_id))
+		except datafetch.RequestFailed as e:
+			return flask.jsonify({
+				'error': str(e)
+			})
+
 
 
 
