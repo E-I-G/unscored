@@ -290,6 +290,8 @@ def merge_comment_with_archived(db: database.DBRequest, remote_comment: dict, ar
 	}
 	
 	if archived_comment is not None:
+		if 'comment_parent_id' in remote_comment and archived_comment.comment_parent_id is None:
+			archive.update_comment_with_parentid(db, archived_comment.id, remote_comment['comment_parent_id'])
 		if (comment['is_removed'] or comment['is_deleted']) and not archived_comment.legal_removed:
 			comment['author'] = archived_comment.author
 			comment['raw_content'] = archived_comment.raw_content.replace('\r\n', '\n')
@@ -379,12 +381,14 @@ def fetch_thread(db: database.DBRequest, post_id: int):
 	if not resp['status']:
 		raise RequestFailed(resp['error'])
 
+	community = resp['posts'][0]['community']
 	return {
 		'post': merge_post_with_archived(db, resp['posts'][0], archived_post),
 		'comments': [
 			merge_comment_with_archived(db, comment, archivedCommentsById.get(comment['id']))
 			for comment in sorted(resp['comments'], key=lambda c: c['id'])
-		]
+		],
+		'modlog_status': 'full' if st.ingest[community]['modlogs'] else 'bans' if st.ingest[community]['banlogs'] else 'none'
 	}
 
 
@@ -857,7 +861,6 @@ def fetch_modlogs(db: database.DBRequest, community: str, page: int, action: str
 	if action and action != '*':
 		select.append('modlogs.type = ?')
 		args.append(action)
-		print(action)
 	if moderator_id:
 		select.append('modlogs.moderator_id = ?')
 		args.append(moderator_id)
@@ -897,7 +900,9 @@ def fetch_modlogs(db: database.DBRequest, community: str, page: int, action: str
 				'type': row.type,
 				'description': row.description.replace('\r', '').replace('\n', ' '),
 				'post_id': row.post_id,
-				'comment_id': row.comment_id
+				'comment_id': row.comment_id,
+				'post_uuid': scoredapi.scored_id_to_uuid(row.post_id) if row.post_id else None,
+				'comment_uuid': scoredapi.scored_id_to_uuid(row.comment_id) if row.comment_id else None
 			}
 			for row in rows
 		],

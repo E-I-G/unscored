@@ -149,24 +149,24 @@ boardIds = {}
 authorIds = {}
 
 def get_board_id(db: DBRequest, community: str, allow_insert=True):
-	if community in boardIds:
-		return boardIds[community]
+	if community.lower() in boardIds:
+		return boardIds[community.lower()]
 	else:
 		if not allow_insert:
 			return 0
 		id = db.queryval("INSERT INTO boards (name) VALUES (?) RETURNING id", community)
-		boardIds[community] = id
+		boardIds[community.lower()] = id
 		logger.logdebug('Assigned id %d to board %s' % (id, community))
 		return id
 	
 def get_author_id(db: DBRequest, author: str, allow_insert=True):
-	if author in authorIds:
-		return authorIds[author]
+	if author.lower() in authorIds:
+		return authorIds[author.lower()]
 	else:
 		if not allow_insert:
 			return 0
 		id = db.queryval("INSERT INTO authors (name) VALUES (?) RETURNING id", author)
-		authorIds[author] = id
+		authorIds[author.lower()] = id
 		logger.logdebug('Assigned id %d to author %s' % (id, repr(author)))
 		return id
 	
@@ -297,10 +297,27 @@ def init_database():
 
 	_perform_db_upgrades(db)
 
-	for row in db.query("SELECT id, name FROM boards"):
-		boardIds[row.name] = row.id
+	for row in db.query("SELECT id, name FROM boards ORDER BY id"):
+		if row.name.lower() in boardIds:
+			logger.logwrn('Removing duplicate board id: %d %s' % (row.id, row.name))
+			db.exec("UPDATE posts SET board_id = ? WHERE board_id = ?", boardIds[row.name.lower()], row.id)
+			db.exec("UPDATE comments SET board_id = ? WHERE board_id = ?", boardIds[row.name.lower()], row.id)
+			db.exec("UPDATE modlogs SET board_id = ? WHERE board_id = ?", boardIds[row.name.lower()], row.id)
+			db.exec("UPDATE known_bans SET board_id = ? WHERE board_id = ?", boardIds[row.name.lower()], row.id)
+			db.exec("DELETE FROM boards WHERE id = ?", row.id)
+		else:
+			boardIds[row.name.lower()] = row.id
 
-	for row in db.query("SELECT id, name FROM authors"):
-		authorIds[row.name] = row.id
+	for row in db.query("SELECT id, name FROM authors ORDER BY id"):
+		if row.name.lower() in authorIds:
+			logger.logwrn('Removing duplicate author id: %d %s' % (row.id, row.name))
+			db.exec("UPDATE posts SET author_id = ? WHERE author_id = ?", authorIds[row.name.lower()], row.id)
+			db.exec("UPDATE comments SET author_id = ? WHERE author_id = ?", authorIds[row.name.lower()], row.id)
+			db.exec("UPDATE modlogs SET moderator_id = ? WHERE moderator_id = ?", authorIds[row.name.lower()], row.id)
+			db.exec("UPDATE modlogs SET target_id = ? WHERE target_id = ?", authorIds[row.name.lower()], row.id)
+			db.exec("UPDATE known_bans SET moderator_id = ? WHERE moderator_id = ?", authorIds[row.name.lower()], row.id)
+			db.exec("UPDATE known_bans SET target_id = ? WHERE target_id = ?", authorIds[row.name.lower()], row.id)
+			db.exec("DELETE FROM authors WHERE id = ?", row.id)
+		authorIds[row.name.lower()] = row.id
 
 	db.close()

@@ -120,6 +120,11 @@ def add_comment(db: database.DBRequest, community: str, comment: dict):
 		db.commit()
 
 
+def update_comment_with_parentid(db: database.DBRequest, comment_id: int, comment_parent_id: int):
+	logger.logdebug('Added parent id %d to comment %d' % (comment_parent_id, comment_id))
+	db.exec("UPDATE comments SET comment_parent_id = ? WHERE id = ?", comment_id, comment_parent_id)
+
+
 
 def _add_ban_record(db: database.DBRequest, timestamp_ms: int, board_id: int,
 					moderator_id: int, target_id: int, is_banned: bool, reason='', nuke=False, permanent=False):

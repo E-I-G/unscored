@@ -856,6 +856,15 @@ function onLoadFetchThread(urlinfo) {
 		if ('error' in response) {
 			dispError(response.error);
 		} else {
+			if (response.modlog_status == 'full') {
+				document.getElementById('modlog-link').innerText = 'Mod log';
+				document.getElementById('modlog-link').hidden = false;
+			} else if (response.modlog_status == 'bans') {
+				document.getElementById('modlog-link').innerText = 'Ban log';
+				document.getElementById('modlog-link').hidden = false;
+			} else {
+				document.getElementById('modlog-link').hidden = true;
+			}
 			setTimeout(function () {
 				renderThread(urlinfo, response.post, response.comments);
 			}, 1000);
@@ -1090,9 +1099,9 @@ const ACTION_DESCRIPTIONS = {
 	'removepost': 'removed post',
 	'approvepost': 'approved post',
 	'removecomment': 'removed comment',
-	'approvecomment': 'approved post',
+	'approvecomment': 'approved comment',
 	'lockpost': 'locked post',
-	'unlockedpost': 'unlocked post',
+	'unlockpost': 'unlocked post',
 	'ignoreposts': 'ignored reports on post',
 	'ignorecomments': 'ignored reports on comment',
 	'ban': 'banned user',
@@ -1139,9 +1148,9 @@ function renderModlogRecord(community, data) {
 	if (data.post_id) {
 		var r_description = document.createElement('a');
 		if (data.comment_id) {
-			r_description.href = '/c/' + community + '/p/' + data.post_id + '/x/c/' + data.comment_id;
+			r_description.href = '/c/' + community + '/p/' + data.post_uuid + '/x/c/' + data.comment_uuid;
 		} else {
-			r_description.href = '/c/' + community + '/p/' + data.post_id;
+			r_description.href = '/c/' + community + '/p/' + data.post_uuid;
 		}
 		r_description.target = '_blank';
 	} else {
@@ -1182,6 +1191,7 @@ function renderModlogRecord(community, data) {
 					r_content.classList.add('rendered');
 				});
 			}
+			formatMarkdownElements();
 		};
 		record.appendChild(r_content);
 	}

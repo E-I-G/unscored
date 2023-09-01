@@ -37,6 +37,7 @@
 				<option value="removepost">removed post</option>
 				<option value="approvepost">approved post</option>
 				<option value="removecomment">removed comment</option>
+				<option value="approvecomment">approved comment</option>
 				<option value="lockpost">locked post</option>
 				<option value="unlockpost">unlocked post</option>
 				<option value="ignoreposts">ignored reports on post</option>
@@ -44,13 +45,8 @@
 			</select>
 		</div>
 		<div>
-			<div>
-				<label for="filter-target">Target:</label>
-				<input type="text" id="filter-target" name="target">
-			</div>
-			<div>
-				<span class="note">(username is case-sensitive.)</span>
-			</div>
+			<label for="filter-target">Target:</label>
+			<input type="text" id="filter-target" name="target">
 		</div>
 		<div>
 			<input type="submit" value="Apply">
@@ -79,7 +75,7 @@
 
 <div id="status-container" hidden></div>
 
-<main id="modlog" data-disptype="modlog">
+<main id="modlog" data-disptype="modlog" hidden>
 	<div id="modlog-content"></div>
 	<div id="nav-btns">
 		<a href="" class="btn-page" id="btn-prevpage">&lt; Previous</a>
