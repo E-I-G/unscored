@@ -158,7 +158,8 @@ def scrape_from_profile(db: database.DBRequest, post: dict):
 		else:
 			logger.logerr('Error on scraped domain: %s' % errText)
 	else:
-		logger.logdebug('Did not manage to scrape post from profile')
+		logger.logdebug('Did not manage to scrape post from profile; attempting scrape from page')
+		successful, post = scrape_from_page(post)
 	return successful, post
 	
 
@@ -178,12 +179,12 @@ def ingest_missing_post(db: database.DBRequest, post_id: int):
 				recovered_from_scrape, post = scrape_from_profile(db, post)
 		try:
 			if not post['is_deleted']:
-				archive.add_post(db, community, post)
+				archive.add_post(db, post)
 		except Exception:
 			logger.log_traceback()
 		else:
 			if recovered_from_scrape:
-				db.exec("UPDATE posts SET recovered_from_scrape = TRUE WHERE id = ?", post_id)
+				db.exec("UPDATE posts SET recovery_method = 'scrape' WHERE id = ?", post_id)
 
 
 			
@@ -199,19 +200,22 @@ def ingest_post_and_comments(db: database.DBRequest, post_id: int):
 		recovered_from_scrape = False
 		if post['is_removed'] and not post['is_deleted'] and not post['title']:
 			if community in st.ingest and st.ingest[community]['domain']:
-				recovered_from_scrape, post = scrape_from_page(post)
+				if post['type'] == 'text':
+					recovered_from_scrape, post = scrape_from_profile(db, post)
+				else:
+					recovered_from_scrape, post = scrape_from_page(post)
 		try:
 			if not post['is_deleted']:
-				archive.add_post(db, community, post)
+				archive.add_post(db, post)
 		except Exception:
 			logger.log_traceback()
 		else:
 			if recovered_from_scrape:
-				db.exec("UPDATE posts SET recovered_from_scrape = TRUE WHERE id = ?", post_id)
+				db.exec("UPDATE posts SET recovery_method = 'scrape' WHERE id = ?", post_id)
 		comments = resp['comments']
 		for comment in comments:
 			try:
-				archive.add_comment(db, community, comment)
+				archive.add_comment(db, comment)
 			except Exception:
 				logger.log_traceback()
 
@@ -283,7 +287,7 @@ def ingest_global_posts(db: database.DBRequest):
 				previousId = post['id']
 				postCount += 1
 				try:
-					archive.add_post(db, post['community'], post)
+					archive.add_post(db, post)
 				except Exception:
 					logger.log_traceback()
 			fromId = resp['posts'][-1]['uuid']
@@ -339,7 +343,7 @@ def ingest_community_posts(db: database.DBRequest, community: str):
 				previousId = post['id']
 				postCount += 1
 				try:
-					archive.add_post(db, community, post)
+					archive.add_post(db, post)
 				except Exception:
 					logger.log_traceback()
 			fromId = resp['posts'][-1]['uuid']
@@ -389,7 +393,7 @@ def ingest_community_comments(db: database.DBRequest, community: str):
 				previousId = comment['id']
 				commentCount += 1
 				try:
-					archive.add_comment(db, community, comment)
+					archive.add_comment(db, comment)
 				except Exception:
 					logger.log_traceback()
 			if end or not resp['has_more_entries']:

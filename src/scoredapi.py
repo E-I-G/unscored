@@ -28,8 +28,8 @@ DEFAULT_ARCHIVE_INFO = {
 	'legal_removed': False,
 	'legal_approved': False,
 	'reportable': False,
-	'recovered_from_log': False,
-	'recovered_from_scrape': False
+	'recovery_method': None,
+	'just_added': False
 }
 
 DEFAULT_BAN_INFO = {
@@ -146,7 +146,7 @@ def apireq(method: str, endpoint: str, params: dict, cache_ttl=0):
 
 def scrape_page(url: str, params={}, selector='html'):
 	logger.logdebug('[Scraping] request: GET %s -> %s' % (url, selector))
-	t_ms_start = time.time_ns() // 1000
+	t_ms_start = time.time_ns() // 10**6
 	try:
 		resp = requests.get(url, params=params, headers={
 			'User-Agent': get_uagent()
@@ -155,7 +155,7 @@ def scrape_page(url: str, params={}, selector='html'):
 		logger.logerr('[Scraping] exception - %s: %s' % (e.__class__.__name__, e))
 		return None
 	finally:
-		t_ms_diff = time.time_ns() // 1000 - t_ms_start
+		t_ms_diff = time.time_ns() // 10**6 - t_ms_start
 		logger.logtrace('[Scraping] request finished in %d ms' % t_ms_diff)
 	soup = BeautifulSoup(resp.content, 'html.parser')
 	api_cooldown()

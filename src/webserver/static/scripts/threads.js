@@ -256,7 +256,7 @@ function renderItemAttributes(type, item, data) {
 	item.setAttribute('data-ismoderator', data.is_moderator * 1);
 	item.setAttribute('data-nsfw', data.is_nsfw * 1);
 	item.setAttribute('data-link', data.link);
-	var isRecovered = data.archive.recovered_from_scrape || data.archive.recovered_from_log
+	var isRecovered = data.archive.recovery_method != null;
 
 	if (type == 'post') {
 		if (data.is_image || data.raw_content) {
@@ -441,12 +441,12 @@ function renderItemAttributes(type, item, data) {
 		icon.className = 'tooltip-container right icon archive-partial';
 		icon.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i><span class="tooltip">Flagged for illegal content</span>';
 		buttons.appendChild(icon);
-	} else if (data.archive.recovered_from_log && (data.is_removed || data.is_deleted)) {
+	} else if (data.archive.recovery_method == 'log' && (data.is_removed || data.is_deleted)) {
 		var icon = document.createElement('span');
 		icon.className = 'tooltip-container right icon archive-partial';
 		icon.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i><span class="tooltip">Partially recovered from mod log</span>';
 		buttons.appendChild(icon);
-	} else if (data.archive.recovered_from_scrape && (data.is_removed || data.is_deleted)) {
+	} else if (data.archive.recovery_method == 'scrape' && (data.is_removed || data.is_deleted)) {
 		var icon = document.createElement('span');
 		icon.className = 'tooltip-container right icon archive-partial';
 		icon.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i><span class="tooltip">Recovered by scraping profile page</span>';
@@ -455,6 +455,11 @@ function renderItemAttributes(type, item, data) {
 		var icon = document.createElement('span');
 		icon.className = 'tooltip-container right icon archive-ok';
 		icon.innerHTML = '<i class="fa-solid fa-cloud"></i><span class="tooltip">Archived</span>';
+		buttons.appendChild(icon);
+	} else if (data.archive.just_added) {
+		var icon = document.createElement('span');
+		icon.className = 'tooltip-container right icon archive-ok';
+		icon.innerHTML = '<i class="fa-solid fa-star-of-life"></i><span class="tooltip">Archived just now</span>';
 		buttons.appendChild(icon);
 	} else {
 		var icon = document.createElement('span');
@@ -708,7 +713,7 @@ function onLoadFetchFeed(urlinfo) {
 			}
 			setTimeout(function () {
 				renderFeed(urlinfo, response.posts, response.has_more_entries);
-			}, 1000);
+			}, 200);
 		}
 	});
 }
@@ -867,7 +872,7 @@ function onLoadFetchThread(urlinfo) {
 			}
 			setTimeout(function () {
 				renderThread(urlinfo, response.post, response.comments);
-			}, 1000);
+			}, 200);
 		}
 	});
 }
@@ -970,7 +975,7 @@ function onLoadFetchProfile(urlinfo) {
 						urlinfo.content == 'post' ? response.posts : response.comments,
 						response.has_more_entries
 					);
-				}, 1000);
+				}, 200);
 			}
 		});
 	}
@@ -1085,7 +1090,7 @@ function onLoadFetchCommunities(urlinfo) {
 		} else {
 			setTimeout(function () {
 				renderCommunityList(urlinfo, response.communities, response.has_more_entries);
-			}, 1000);
+			}, 200);
 		}
 	});
 }
@@ -1104,6 +1109,8 @@ const ACTION_DESCRIPTIONS = {
 	'unlockpost': 'unlocked post',
 	'ignoreposts': 'ignored reports on post',
 	'ignorecomments': 'ignored reports on comment',
+	'addmoderator': 'added moderator',
+	'removemoderator': 'removed moderator',
 	'ban': 'banned user',
 	'unban': 'unbanned user',
 };
@@ -1279,7 +1286,7 @@ function onLoadFetchModlog(urlinfo) {
 		} else {
 			setTimeout(function () {
 				renderModlog(urlinfo, response.records, response.moderators, response.has_more_entries);
-			}, 1000);
+			}, 200);
 		}
 	});
 }

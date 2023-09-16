@@ -1,0 +1,19 @@
+{% extends "layout.html" %}
+{% block head %}
+	{{ super() }}
+	
+	<script src="/static/scripts/admin.js?v={{ VERSION }}" type="application/javascript"></script>
+	<link rel="stylesheet" href="/static/styles/admin.css?v={{ VERSION }}">
+{% endblock %}
+
+{% block contents %}
+<h3>Database query tool</h3>
+
+<div>
+	<textarea id="db-query"></textarea>
+</div>
+<div>
+	<input type="submit" value="Execute" onclick="sendDbQuery();">
+</div>
+<div id="db-response" style="margin-top: 25px;"></div>
+{% endblock %}

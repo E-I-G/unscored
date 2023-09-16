@@ -1,4 +1,5 @@
 import re
+import time
 import urllib.parse
 
 
@@ -16,8 +17,6 @@ import archive
 
 
 GLOBAL_DOMAINS = ['scored.co', 'communities.win']
-
-BOT_REMOVAL_THRESHOLD = 60*10
 
 BOT_NAMES = ['Scored', 'AutoModerator', 'Filter', 'CommunityFilter', 'GlobalFilter']
 
@@ -50,6 +49,9 @@ def get_content_urls(community: str, post_id, comment_id=None):
 	return urls
 
 def parse_url(raw_url: str):
+	if raw_url.startswith('c/') or raw_url.startswith('u/'):
+		raw_url = '/' + raw_url
+		
 	validDomains = get_valid_domains()
 	url = urllib.parse.urlparse(raw_url)
 	domain = url.netloc
@@ -58,7 +60,8 @@ def parse_url(raw_url: str):
 		key: ''.join(vals)
 		for key, vals in urllib.parse.parse_qs(url.query).items()
 	}
-	if re.match('^[A-z0-9_]+$', raw_url.strip()):
+	
+	if re.match('^[A-z0-9_-]+$', raw_url.strip()):
 		return {
 			'type': 'profile',
 			'user': raw_url.strip(),
@@ -92,14 +95,14 @@ def parse_url(raw_url: str):
 				'normalized_path': '/communities' + '?sort=' + sort + '&page=' + str(page)
 			}
 		else:
-			if domain and domain not in GLOBAL_DOMAINS:
+			if domain and domain not in GLOBAL_DOMAINS and not path.startswith('/c/'):
 				community = get_community_from_domain(domain)
 			elif path.startswith('/p/'):
 				community = None
 			else:
 				result = re.findall('^/c/([^/]+)/?', path)
 				if not result:
-					logger.logtrace('Invalid URL [1]')
+					logger.logtrace('Invalid URL [1] - %s' % raw_url)
 					raise InvalidURL('Invalid URL')
 				community = result[0]
 				sp = path.split('/', 3)
@@ -174,6 +177,9 @@ def merge_post_with_archived(db: database.DBRequest, remote_post: dict, archived
 	d_archive = scoredapi.DEFAULT_ARCHIVE_INFO.copy()
 	d_moderation = scoredapi.DEFAULT_MODERATION_INFO.copy()
 	d_ban = scoredapi.DEFAULT_BAN_INFO.copy()
+	removal_source = remote_post.get('removal_source', '')
+	if not removal_source or removal_source == 'deleted':
+		removal_source = archived_post.removal_source if archived_post.removal_source else ''
 	post = {
 		'id': remote_post['id'],
 		'uuid': remote_post['uuid'],
@@ -183,13 +189,13 @@ def merge_post_with_archived(db: database.DBRequest, remote_post: dict, archived
 		'is_admin': remote_post.get('is_admin', False),
 		'is_moderator': remote_post.get('is_moderator', False),
 		'is_removed': remote_post.get('is_removed', False),
-		'is_filtered': 'filter' in remote_post.get('removal_source', '').lower(),
+		'is_filtered': 'filter' in removal_source.lower(),
 		'is_deleted': remote_post.get('is_deleted', False),
 		'is_edited': remote_post.get('is_edited', False),
 		'is_locked': remote_post.get('is_locked', False),
 		'is_nsfw': remote_post.get('is_nsfw', False),
 		'is_image': remote_post.get('is_image', False),
-		'removal_source': remote_post.get('removal_source', ''),
+		'removal_source': removal_source,
 		'type': remote_post['type'],
 		'link': remote_post['link'],
 		'domain': urllib.parse.urlparse(remote_post['link']).netloc,
@@ -232,11 +238,11 @@ def merge_post_with_archived(db: database.DBRequest, remote_post: dict, archived
 		}
 		post['archive'] = {
 			'is_archived': True,
+			'just_added': False,
 			'archived_at': archived_post.archived_at_ms,
 			'legal_removed': bool(archived_post.legal_removed),
 			'legal_approved': bool(archived_post.legal_approved),
-			'recovered_from_log': bool(archived_post.recovered_from_log),
-			'recovered_from_scrape': bool(archived_post.recovered_from_scrape),
+			'recovery_method': archived_post.recovery_method,
 			'reportable': (
 				st.config['reporting_enabled'] and
 				post['title'] and
@@ -245,12 +251,22 @@ def merge_post_with_archived(db: database.DBRequest, remote_post: dict, archived
 				(post['is_removed'] or post['is_deleted'])
 			)
 		}
+	else:
+		istate = st.ingest.get(remote_post['community'])
+		age = time.time() - remote_post['created'] / 1000
+		if st.config['ingest_missing'] and istate and age > istate['interval']:
+			logger.logdebug('Adding missing post: %d' % remote_post['id'])
+			archive.add_post(db, remote_post)
+			post['archive']['just_added'] = True
+
 	if post['is_deleted'] and not post['is_removed'] and not st.config['show_deleted']:
 		if st.config['purge_deleted'] and archived_post['raw_content'] != '':
 			logger.logtrace('Purging deleted post %d' % post['id'])
 			db.exec("UPDATE posts SET raw_content = '', link = '', preview = '' WHERE id = ?", post['id'])
 		post['raw_content'] = post['link'] = post['domain'] = post['preview'] = ''
+
 	return post
+
 
 def merge_comment_with_archived(db: database.DBRequest, remote_comment: dict, archived_comment):
 	d_archive = scoredapi.DEFAULT_ARCHIVE_INFO.copy()
@@ -290,8 +306,6 @@ def merge_comment_with_archived(db: database.DBRequest, remote_comment: dict, ar
 	}
 	
 	if archived_comment is not None:
-		if 'comment_parent_id' in remote_comment and archived_comment.comment_parent_id is None:
-			archive.update_comment_with_parentid(db, archived_comment.id, remote_comment['comment_parent_id'])
 		if (comment['is_removed'] or comment['is_deleted']) and not archived_comment.legal_removed:
 			comment['author'] = archived_comment.author
 			comment['raw_content'] = archived_comment.raw_content.replace('\r\n', '\n')
@@ -310,11 +324,11 @@ def merge_comment_with_archived(db: database.DBRequest, remote_comment: dict, ar
 		}
 		comment['archive'] = {
 			'is_archived': True,
+			'just_added': False,
 			'archived_at': archived_comment.archived_at_ms,
 			'legal_removed': bool(archived_comment.legal_removed),
 			'legal_approved': bool(archived_comment.legal_approved),
-			'recovered_from_log': bool(archived_comment.recovered_from_log),
-			'recovered_from_scrape': False,
+			'recovery_method': archived_comment.recovery_method,
 			'reportable': (
 				st.config['reporting_enabled'] and
 				comment['raw_content'] and
@@ -323,6 +337,15 @@ def merge_comment_with_archived(db: database.DBRequest, remote_comment: dict, ar
 				(comment['is_removed'] or comment['is_deleted'])
 			)
 		}
+	else:
+		istate = st.ingest.get(remote_comment['community'])
+		age = time.time() - remote_comment['created'] / 1000
+		if st.config['ingest_missing'] and istate and age > istate['interval']:
+			logger.logdebug('Adding missing comment: %d' % remote_comment['id'])
+			archive.add_comment(db, remote_comment)
+			comment['archive']['just_added'] = True
+
+
 	if comment['is_deleted'] and not comment['is_removed'] and not st.config['show_deleted']:
 		if st.config['purge_deleted'] and archived_comment['raw_content'] != '':
 			logger.logtrace('Purging deleted comment %d' % comment['id'])
@@ -820,7 +843,7 @@ def fetch_new_feed(db: database.DBRequest, community: str, from_uuid: str = None
 			}, cache_ttl=1800)
 			if resp['status']:
 				post = resp['posts'][0]
-				if post['is_deleted']:
+				if post['is_deleted'] and not archived_post.known_deleted:
 					db.exec("UPDATE posts SET known_deleted = TRUE WHERE id = ?", archived_post.id)
 					logger.logtrace('Marked post %d as deleted' % archived_post.id)
 				elif post['is_removed']:

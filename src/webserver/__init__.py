@@ -1,6 +1,7 @@
 import os
 import secrets
 import contextlib
+import time
 from functools import wraps
 from logging import getLogger
 
@@ -126,6 +127,10 @@ def template_context_processor():
 		'is_admin': wapp.is_admin,
 		'VERSION': st.VERSION
 	}
+
+@wapp.app.before_request
+def before_request_events():
+	flask.g.startTime = time.time()
 
 @wapp.app.after_request
 def after_request_events(response):

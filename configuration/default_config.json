@@ -34,5 +34,6 @@
 	"purge_deleted": false,
 	"show_deleted": true,
 	"reporting_enabled": true,
-	"ingest_enabled": true
+	"ingest_enabled": true,
+	"ingest_missing": true
 }

@@ -7,3 +7,58 @@
 .removal-request .head {
 	font-size: 13px;
 }
+
+
+
+#db-query {
+	display: block;
+	width: calc(100% - 10px);
+	height: 200px;
+}
+
+#db-response {
+	background-color: black;
+	font-family: monospace;
+	color: white;
+	flex-grow: 1;
+	padding: 4px;
+	max-width: calc(100% - 10px);
+	height: 500px;
+	overflow: scroll;
+}
+
+html[data-theme="light"] #db-response {
+	background-color: #EEE;
+	color: black;
+}
+
+#db-response .input {
+	color: #66b3ff;
+}
+
+#db-response .error {
+	color: #ff6666;
+}
+
+#db-response table {
+	border-collapse: collapse;
+}
+
+#db-response table th {
+	border: 1px solid gray;
+	border-bottom: 2px solid rgb(150, 150, 150);
+	font-weight: bold;
+}
+
+#db-response table td {
+	border: 1px solid gray;
+	overflow: hidden;
+}
+
+html[data-theme="light"] #db-response table {
+	border-color: black;
+}
+
+#db-response > div {
+	margin-bottom: 10px;
+}

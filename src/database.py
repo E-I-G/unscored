@@ -1,4 +1,5 @@
 import re
+import time
 import sqlite3
 import contextlib
 from collections import namedtuple
@@ -26,6 +27,7 @@ class DBRequest:
 			self.dbType = dbType
 		else:
 			self.dbType = st.config['database']
+		tStart = time.time_ns()
 		if self.dbType == 'postgres':
 			self.con = psycopg2.connect(
 				dbname = st.config['postgres_dbname'],
@@ -38,6 +40,8 @@ class DBRequest:
 		else:
 			self.con = sqlite3.connect(st.config['sqlite_path'])
 			self.con.row_factory = sqlite3_namedtuple_factory
+		ms = (time.time_ns() - tStart) // 10**6
+		logger.logtrace('Connected to %s in %d ms' % (self.dbType, ms))
 
 	def _convert_query(self, query):
 		if self.dbType == 'postgres':
@@ -117,7 +121,11 @@ class DBRequest:
 		self._execute_query(query, args)
 
 	def query(self, query, *args):
-		return self._execute_query(query, args, return_mode='all')
+		tStart = time.time_ns()
+		rows = self._execute_query(query, args, return_mode='all')
+		ms = (time.time_ns() - tStart) // 10**6
+		logger.logtrace("Query finished in %d ms returning %d rows" % (ms, len(rows)))
+		return rows
 
 	def queryrow(self, query, *args):
 		return self._execute_query(query, args, return_mode='row')
@@ -125,8 +133,13 @@ class DBRequest:
 	def queryval(self, query, *args):
 		return self._execute_query(query, args, return_mode='scalar')
 
-	def querybool(self, query, *args):
+	def queryexists(self, query, *args):
 		return self._execute_query(query, args, return_mode='boolean')
+
+	def queryraw(self, query):
+		if self.dbType == 'postgres':
+			query = query.replace('%', '%%')
+		return self._execute_query(query, convert_query=False, return_mode='all')
 
 	def __enter__(self):
 		return self
@@ -178,10 +191,54 @@ def convert_database(db1: DBRequest, db2: DBRequest):
 
 
 def _perform_db_upgrades(db: DBRequest):
-	if not db.has_field('posts', 'recovered_from_scrape'):
-		db.exec("ALTER TABLE posts ADD COLUMN recovered_from_scrape boolean DEFAULT FALSE")
-	if not db.has_field('comments', 'comment_parent_id'):
-		db.exec("ALTER TABLE comments ADD COLUMN comment_parent_id integer DEFAULT NULL")
+	if not db.has_field('comments', 'known_deleted'):
+		db.exec("ALTER TABLE comments ADD COLUMN known_deleted boolean DEFAULT FALSE")
+
+	if not db.has_field('posts', 'recovery_method'):
+		db.exec("UPDATE posts SET archived_at_ms = archived_at_ms / 1000")
+		db.exec("ALTER TABLE posts ADD COLUMN recovery_method text DEFAULT NULL")
+		fromScrape = [row.id for row in db.query("SELECT id FROM posts WHERE recovered_from_scrape")]
+		for id in fromScrape:
+			db.exec("UPDATE posts SET recovery_method = 'scrape' WHERE id = ?", id)
+		fromLog = [row.id for row in db.query("SELECT id FROM posts WHERE recovered_from_log")]
+		for id in fromLog:
+			db.exec("UPDATE posts SET recovery_method = 'log' WHERE id = ?", id)
+		db.exec("ALTER TABLE posts DROP column recovered_from_scrape")
+		db.exec("ALTER TABLE posts DROP column recovered_from_log")
+		db.commit()
+	
+	if not db.has_field('comments', 'recovery_method'):
+		db.exec("UPDATE comments SET archived_at_ms = archived_at_ms / 1000")
+		db.exec("ALTER TABLE comments ADD COLUMN recovery_method text DEFAULT NULL")
+		fromLog = [row.id for row in db.query("SELECT id FROM comments WHERE recovered_from_log")]
+		for id in fromLog:
+			db.exec("UPDATE comments SET recovery_method = 'log' WHERE id = ?", id)
+		db.exec("ALTER TABLE comments DROP column recovered_from_log")
+		db.commit()
+	
+	if not db.has_field('posts', 'removal_source'):
+		db.exec("ALTER TABLE posts ADD COLUMN removal_source text DEFAULT NULL")
+		db.exec("UPDATE posts SET removal_source = 'unknown' WHERE recovery_method IS NOT NULL")
+		db.exec("UPDATE posts SET removal_source = 'unknown' WHERE title = ''")
+		cfIds = [row.id for row in db.query("SELECT id FROM posts WHERE removed_by = 'CommunityFilter' OR removed_by = 'Filter'")]
+		gfIds = [row.id for row in db.query("SELECT id FROM posts WHERE removed_by = 'GlobalFilter'")]
+		for id in cfIds:
+			db.exec("UPDATE posts SET removal_source = 'communityFilter' WHERE id = ?", id)
+		for id in gfIds:
+			db.exec("UPDATE posts SET removal_source = 'spamFilter' WHERE id = ?", id)
+		db.commit()
+	
+	if not db.has_field('comments', 'removal_source'):
+		db.exec("ALTER TABLE comments ADD COLUMN removal_source text DEFAULT NULL")
+		db.exec("UPDATE comments SET removal_source = 'unknown' WHERE recovery_method IS NOT NULL")
+		db.exec("UPDATE comments SET removal_source = 'unknown' WHERE raw_content = ''")
+		cfIds = [row.id for row in db.query("SELECT id FROM comments WHERE removed_by = 'CommunityFilter' OR removed_by = 'Filter'")]
+		gfIds = [row.id for row in db.query("SELECT id FROM comments WHERE removed_by = 'GlobalFilter'")]
+		for id in cfIds:
+			db.exec("UPDATE comments SET removal_source = 'communityFilter' WHERE id = ?", id)
+		for id in gfIds:
+			db.exec("UPDATE comments SET removal_source = 'spamFilter' WHERE id = ?", id)
+		db.commit()
 
 
 
@@ -216,14 +273,13 @@ def init_database():
 			title text,
 			raw_content text,
 			created_ms bigint,
-			known_deleted boolean,
 			archived_at_ms bigint,
+			known_deleted boolean DEFAULT FALSE,
+			removal_source text DEFAULT NULL,
 			approved_at_ms bigint DEFAULT NULL,
 			approved_by text DEFAULT NULL,
 			removed_at_ms bigint DEFAULT NULL,
 			removed_by text DEFAULT NULL,
-			recovered_from_log boolean DEFAULT FALSE,
-			recovered_from_scrape boolean DEFAULT FALSE,
 			legal_removed boolean DEFAULT FALSE,
 			legal_approved boolean DEFAULT FALSE,
 			FOREIGN KEY(board_id) REFERENCES boards(id),
@@ -241,11 +297,12 @@ def init_database():
 			raw_content text,
 			created_ms bigint,
 			archived_at_ms bigint,
+			known_deleted boolean DEFAULT FALSE,
+			removal_source text DEFAULT NULL,
 			approved_at_ms bigint DEFAULT NULL,
 			approved_by text DEFAULT NULL,
 			removed_at_ms bigint DEFAULT NULL,
 			removed_by text DEFAULT NULL,
-			recovered_from_log boolean DEFAULT FALSE,
 			legal_removed boolean DEFAULT FALSE,
 			legal_approved boolean DEFAULT FALSE,
 			FOREIGN KEY(board_id) REFERENCES boards(id),

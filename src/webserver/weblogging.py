@@ -1,3 +1,5 @@
+import time
+
 import flask
 
 from utils import logger
@@ -5,8 +7,9 @@ import state as st
 
 def log_completed_request():
 	data = flask.g.requestData
+	ms = int((time.time() - flask.g.startTime) * 1000)
 	level = st.config['log_weblevel']
-	logger.log('[Web] %s: %s %s - %d' % (data['addr'], data['method'], data['url'], data['status']), level)
+	logger.log('[Web] %s: %s %s - %d %d ms' % (data['addr'], data['method'], data['url'], data['status'], ms), level)
 
 
 def log_unhandled_error(error):

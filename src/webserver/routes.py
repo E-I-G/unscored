@@ -1,5 +1,6 @@
 import os
 import mimetypes
+import json
 import urllib.parse
 
 import flask
@@ -30,6 +31,10 @@ def admin_dashboard():
 @wapp.route('GET', '/admin-dashboard/ip-blocks/', is_admin=True)
 def admin_dashboard_ipblocks():
 	return flask.Response('\n'.join(st.blockedIPs), mimetype='text/plain')
+
+@wapp.route('GET', '/admin-dashboard/db/', is_admin=True)
+def admin_dbtool():
+	return flask.render_template('pages/admin/dbquery.html')
 
 @wapp.route('POST', '/admin-login')
 def admin_login():
@@ -258,6 +263,26 @@ def ajax_unblock_ip():
 	ip = flask.request.form.get('ip', '')
 	st.unblock_ip(ip)
 	return flask.jsonify({'status': True})
+
+
+@wapp.route('POST', '/ajax/db-query', is_admin=True)
+def ajax_db_query():
+	query = flask.request.form['query']
+	error = None
+	r = None
+	with database.DBRequest() as db:
+		try:
+			r = db.queryraw(query)
+		except Exception as e:
+			error = '%s: %s' % (e.__class__.__name__, e)
+		return flask.jsonify({
+			'data': [[json.dumps(cell) for cell in row] for row in r] if r else None,
+			'fields': r[0]._fields if r else [],
+			'rowcount': db.rowcount if not error else 0,
+			'statusmessage': db.statusmessage if not error else None,
+			'error': error,
+			'status': not error
+		})
 
 
 
