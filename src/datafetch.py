@@ -13,6 +13,7 @@ import state as st
 import database
 import scoredapi
 import archive
+import ingest
 
 
 
@@ -178,8 +179,13 @@ def merge_post_with_archived(db: database.DBRequest, remote_post: dict, archived
 	d_moderation = scoredapi.DEFAULT_MODERATION_INFO.copy()
 	d_ban = scoredapi.DEFAULT_BAN_INFO.copy()
 	removal_source = remote_post.get('removal_source', '')
-	if not removal_source or removal_source == 'deleted':
+	if archived_post and (not removal_source or removal_source == 'deleted'):
 		removal_source = archived_post.removal_source if archived_post.removal_source else ''
+	if not remote_post['is_removed']:
+		removal_source = ''
+	if archived_post:
+		archive.update_existing_post(db, remote_post, archived_post)
+
 	post = {
 		'id': remote_post['id'],
 		'uuid': remote_post['uuid'],
@@ -203,7 +209,7 @@ def merge_post_with_archived(db: database.DBRequest, remote_post: dict, archived
 		'title': remote_post.get('title', '').strip(),
 		'raw_content': remote_post['raw_content'].replace('\r\n', '\n'),
 		'comments': remote_post.get('comments', 0),
-		'score': remote_post.get('score', 0),
+		'score': remote_post.get('score'),
 		'score_up': remote_post.get('score_up', 0),
 		'score_down': remote_post.get('score_down', 0),
 		'normalized_path': '/c/' + remote_post['community'] + '/p/' + remote_post['uuid'],
@@ -214,7 +220,7 @@ def merge_post_with_archived(db: database.DBRequest, remote_post: dict, archived
 	}
 	
 	if archived_post is not None:
-		if (post['is_removed'] or post['is_deleted']) and not archived_post.legal_removed:
+		if post['is_deleted'] or post['is_removed'] and 'moderation' not in remote_post:
 			post['author'] = archived_post.author
 			post['title'] = archived_post.title.strip()
 			post['raw_content'] = archived_post.raw_content.replace('\r\n', '\n')
@@ -259,11 +265,15 @@ def merge_post_with_archived(db: database.DBRequest, remote_post: dict, archived
 			archive.add_post(db, remote_post)
 			post['archive']['just_added'] = True
 
+	if archived_post and archived_post.legal_removed:
+		post['title'] = post['raw_content'] = post['link'] = post['preview'] = ''
+
+
 	if post['is_deleted'] and not post['is_removed'] and not st.config['show_deleted']:
 		if st.config['purge_deleted'] and archived_post['raw_content'] != '':
 			logger.logtrace('Purging deleted post %d' % post['id'])
 			db.exec("UPDATE posts SET raw_content = '', link = '', preview = '' WHERE id = ?", post['id'])
-		post['raw_content'] = post['link'] = post['domain'] = post['preview'] = ''
+		post['raw_content'] = post['link'] = post['domain'] = post['preview'] = post['domain'] = ''
 
 	return post
 
@@ -272,6 +282,14 @@ def merge_comment_with_archived(db: database.DBRequest, remote_comment: dict, ar
 	d_archive = scoredapi.DEFAULT_ARCHIVE_INFO.copy()
 	d_moderation = scoredapi.DEFAULT_MODERATION_INFO.copy()
 	d_ban = scoredapi.DEFAULT_BAN_INFO.copy()
+	removal_source = remote_comment.get('removal_source', '')
+	if archived_comment and (not removal_source or removal_source == 'deleted'):
+		removal_source = archived_comment.removal_source if archived_comment.removal_source else ''
+	if not remote_comment['is_removed']:
+		removal_source = ''
+	if archived_comment:
+		archive.update_existing_comment(db, remote_comment, archived_comment)
+
 	comment = {
 		'id': remote_comment['id'],
 		'uuid': remote_comment['uuid'],
@@ -287,7 +305,7 @@ def merge_comment_with_archived(db: database.DBRequest, remote_comment: dict, ar
 		'is_locked': False,
 		'is_nsfw': False,
 		'is_image': False,
-		'removal_source': remote_comment.get('removal_source', ''),
+		'removal_source': removal_source,
 		'raw_content': remote_comment['raw_content'].replace('\r\n', '\n'),
 		'score': remote_comment.get('score', 0),
 		'score_up': remote_comment.get('score_up', 0),
@@ -306,7 +324,7 @@ def merge_comment_with_archived(db: database.DBRequest, remote_comment: dict, ar
 	}
 	
 	if archived_comment is not None:
-		if (comment['is_removed'] or comment['is_deleted']) and not archived_comment.legal_removed:
+		if comment['is_deleted'] or comment['is_removed'] and 'moderation' not in remote_comment:
 			comment['author'] = archived_comment.author
 			comment['raw_content'] = archived_comment.raw_content.replace('\r\n', '\n')
 		comment['ban'] = {
@@ -345,6 +363,8 @@ def merge_comment_with_archived(db: database.DBRequest, remote_comment: dict, ar
 			archive.add_comment(db, remote_comment)
 			comment['archive']['just_added'] = True
 
+	if archived_comment and archived_comment.legal_removed:
+		comment['raw_content'] = ''
 
 	if comment['is_deleted'] and not comment['is_removed'] and not st.config['show_deleted']:
 		if st.config['purge_deleted'] and archived_comment['raw_content'] != '':
@@ -434,6 +454,39 @@ def fetch_single_comment(db: database.DBRequest, post_id: int, comment_id: int):
 		raise RequestFailed('comment not found in thread')
 
 
+def archived_post_to_dict(archived_post, is_removed=None, is_deleted=None, removal_source='', community=None, author=None):
+	return {
+		'id': archived_post.id,
+		'uuid': scoredapi.scored_id_to_uuid(archived_post.id),
+		'author': author if author is not None else archived_post.author,
+		'community': community if community is not None else archived_post.community,
+		'type': archived_post.type,
+		'link': archived_post.link,
+		'title': archived_post.title,
+		'raw_content': archived_post.raw_content,
+		'created': archived_post.created_ms,
+		'is_removed': is_removed if is_removed is not None else bool(archived_post.removal_source),
+		'is_deleted': is_deleted if is_deleted is not None else archived_post.known_deleted,
+		'removal_source': removal_source if removal_source else archived_post.removal_source
+	}
+
+def archived_comment_to_dict(archived_comment, is_removed=False, is_deleted=False, removal_source='', community=None, author=None):
+	return {
+		'id': archived_comment.id,
+		'uuid': scoredapi.scored_id_to_uuid(archived_comment.id),
+		'parent_id': archived_comment.post_id,
+		'parent_uuid': scoredapi.scored_id_to_uuid(archived_comment.post_id),
+		'comment_parent_id': archived_comment.comment_parent_id,
+		'author': author if author is not None else archived_comment.author,
+		'community': community if community is not None else archived_comment.community,
+		'raw_content': archived_comment.raw_content,
+		'created': archived_comment.created_ms,
+		'is_removed': is_removed if is_removed is not None else bool(archived_comment.removal_source),
+		'is_deleted': is_deleted if is_deleted is not None else archived_comment.known_deleted,
+		'removal_source': removal_source if removal_source else archived_comment.removal_source
+	}
+
+
 
 def _fetch_suspended_profile_posts(db: database.DBRequest, username: str, page: int):
 	author_id = database.get_author_id(db, username)
@@ -464,16 +517,7 @@ def _fetch_suspended_profile_posts(db: database.DBRequest, username: str, page: 
 	offset = max(0, page - 1) * scoredapi.ITEMS_PER_PAGE
 	archived_posts = db.query(query, author_id, limit, offset)
 	simulated_posts = [
-		{
-			'id': archived_post.id,
-			'uuid': scoredapi.scored_id_to_uuid(archived_post.id),
-			'author': username,
-			'community': archived_post.community,
-			'type': archived_post.type,
-			'link': archived_post.link,
-			'raw_content': archived_post.raw_content,
-			'is_removed': True
-		}
+		archived_post_to_dict(archived_post, is_removed=True, removal_source='nuke')
 		for archived_post in archived_posts
 	]
 	return {
@@ -515,16 +559,7 @@ def _fetch_suspended_profile_comments(db: database.DBRequest, username: str, pag
 	offset = max(0, page - 1) * scoredapi.ITEMS_PER_PAGE
 	archived_comments = db.query(query, author_id, limit, offset)
 	simulated_comments = [
-		{
-			'id': archived_comment.id,
-			'uuid': scoredapi.scored_id_to_uuid(archived_comment.id),
-			'parent_id': archived_comment.post_id,
-			'parent_uuid': scoredapi.scored_id_to_uuid(archived_comment.post_id),
-			'author': username,
-			'community': archived_comment.community,
-			'raw_content': archived_comment.raw_content,
-			'is_removed': True
-		}
+		archived_comment_to_dict(archived_comment, is_removed=True, removal_source='nuke')
 		for archived_comment in archived_comments
 	]
 	return {
@@ -786,6 +821,7 @@ def fetch_profile_removedcontent(db: database.DBRequest, username: str, from_pos
 
 def fetch_new_feed(db: database.DBRequest, community: str, from_uuid: str = None):
 	modlog_status = 'none'
+	board_id = database.get_board_id(db, community)
 	if community in st.ingest:
 		modlog_status = 'full' if st.ingest[community]['modlogs'] else 'bans' if st.ingest[community]['banlogs'] else 'none'
 	resp = scoredapi.apireq('GET', '/api/v2/post/newv2.json', {
@@ -794,11 +830,16 @@ def fetch_new_feed(db: database.DBRequest, community: str, from_uuid: str = None
 	}, cache_ttl=60)
 	if not resp['status']:
 		raise RequestFailed(resp['error'])
-	if len(resp['posts']) == 0:
-		raise RequestFailed('No public posts in this community')
-	board_id = database.get_board_id(db, community)
-	firstId = resp['posts'][0]['id']
-	lastId = resp['posts'][-1]['id']
+	
+	if len(resp['posts']) == 0 or not from_uuid:
+		highestId = ingest.get_last_known_postid()
+	else:
+		highestId = resp['posts'][0]['id']
+	if len(resp['posts']) < 20:
+		lowestId = 0
+	else:
+		lowestId = resp['posts'][-1]['id']
+
 	postsById = {}
 	for post in resp['posts']:
 		postsById[post['id']] = post
@@ -819,11 +860,12 @@ def fetch_new_feed(db: database.DBRequest, community: str, from_uuid: str = None
 		INNER JOIN authors ON authors.id = posts.author_id
 		LEFT OUTER JOIN known_bans ON known_bans.target_id = posts.author_id AND known_bans.board_id = posts.board_id
 		LEFT OUTER JOIN authors AS moderators ON moderators.id = known_bans.moderator_id
-		WHERE posts.id <= ? AND posts.id >= ? AND posts.board_id = ? AND NOT posts.known_deleted
+		WHERE posts.id <= ? AND posts.id >= ? AND posts.board_id = ?
+		LIMIT 50
 	"""
 
 	archivedById = {}
-	for archived_post in db.query(query, firstId, lastId, board_id):
+	for archived_post in db.query(query, highestId, lowestId, board_id):
 		archivedById[archived_post.id] = archived_post
 
 	for id in postsById:
@@ -831,8 +873,12 @@ def fetch_new_feed(db: database.DBRequest, community: str, from_uuid: str = None
 
 	requestCount = 0
 	for id in archivedById:
-		if id not in postsById:
-			archived_post = archivedById[id]
+		archived_post = archivedById[id]
+		if id not in postsById and archived_post.known_deleted:
+			post = archived_post_to_dict(archived_post, community=community)
+			post = merge_post_with_archived(db, post, archived_post)
+			postsById[post['id']] = post
+		elif id not in postsById:
 			requestCount += 1
 			if requestCount >= st.config['request_limit_feed']:
 				logger.logwrn('Stopped checking missing posts in feed due to having reached the request limit')

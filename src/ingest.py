@@ -187,6 +187,10 @@ def ingest_missing_post(db: database.DBRequest, post_id: int):
 				db.exec("UPDATE posts SET recovery_method = 'scrape' WHERE id = ?", post_id)
 
 
+def get_last_known_postid() -> int:
+	return st.ingest['global']['last_post_id']
+
+
 			
 def ingest_post_and_comments(db: database.DBRequest, post_id: int):
 	logger.log('Ingesting post: %s' % post_id)

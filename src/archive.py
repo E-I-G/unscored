@@ -92,6 +92,9 @@ def update_existing_post(db: database.DBRequest, post: dict, existing_post):
 	if removal_source != 'deleted' and removal_source != existing_post.removal_source:
 		db.exec("UPDATE posts SET removal_source = ? WHERE id = ?", removal_source, post['id'])
 		logger.logdebug("Updated removal_source of post %d to %s" % (post['id'], removal_source))
+	if not post['is_removed'] and existing_post.removal_source:
+		db.exec("UPDATE posts SET removal_source = NULL WHERE id = ?", post['id'])
+		logger.logdebug("Removed removal_source from post %d" % post['id'])
 	
 	if 'moderation' in post:
 		m = post['moderation']
@@ -195,6 +198,9 @@ def update_existing_comment(db: database.DBRequest, comment: dict, existing_comm
 	if removal_source != 'deleted' and removal_source != existing_comment.removal_source:
 		db.exec("UPDATE comments SET removal_source = ? WHERE id = ?", removal_source, comment['id'])
 		logger.logdebug("Updated removal_source of comment %d to %s" % (comment['id'], removal_source))
+	if not comment['is_removed'] and existing_comment.removal_source:
+		db.exec("UPDATE comments SET removal_source = NULL WHERE id = ?", comment['id'])
+		logger.logdebug("Removed removal_source from comment %d" % comment['id'])
 	
 	if 'moderation' in comment:
 		m = comment['moderation']
@@ -357,17 +363,21 @@ def add_modlog_record(db: database.DBRequest, community: str, record: dict):
 def mark_user_suspended(db: database.DBRequest, username):
 	user_id = database.get_author_id(db, username)
 	db.exec("UPDATE authors SET is_suspended = TRUE WHERE id = ? AND NOT is_suspended", user_id)
+	db.exec("UPDATE posts SET removal_source = 'nuke' WHERE removal_source IS NULL AND author_id = ?", user_id)
+	db.exec("UPDATE comments SET removal_source = 'nuke' WHERE removal_source IS NULL AND author_id = ?", user_id)
 	if db.rowcount:
 		logger.log('Marked user %s as suspended' % username)
 
 def mark_user_deleted(db: database.DBRequest, username):
 	user_id = database.get_author_id(db, username)
 	db.exec("UPDATE authors SET is_deleted = TRUE WHERE id = ? AND NOT is_deleted", user_id)
+	db.exec("UPDATE posts SET known_deleted = TRUE WHERE author_id = ?", user_id)
+	db.exec("UPDATE comments SET known_deleted = TRUE WHERE author_id = ?", user_id)
 	if db.rowcount:
 		logger.log('Marked user %s as deleted' % username)
 		if st.config['purge_deleted']:
 			logger.log('Purging content by deleted user %s from database' % username)
-			db.exec("UPDATE posts SET title = '', link = '', raw_content = '', known_deleted = TRUE WHERE author_id = ?", user_id)
+			db.exec("UPDATE posts SET title = '', link = '', raw_content = '' WHERE author_id = ?", user_id)
 			logger.log('%d posts purged' % db.rowcount)
 			db.exec("UPDATE comments SET raw_content = '' WHERE author_id = ?", user_id)
 			logger.log('%d comments purged' % db.rowcount)

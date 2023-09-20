@@ -576,7 +576,7 @@ function renderPost(data) {
 	post.innerHTML = html`
 		<div class="main">
 			<div class="vote">
-				<span>${data.score}</span>
+				<span>${data.score != null ? data.score : 'N/A'}</span>
 			</div>
 			<div class="thumbnail"></div>
 			<div class="body">
@@ -668,16 +668,20 @@ function renderFeed(urlinfo, posts, has_more_entries) {
 	document.getElementById('loading-text').innerText = 'Rendering content...';
 	var countTotal = 0;
 	var countRemoved = 0;
+	var countDeleted = 0;
 	for (let i = 0; i < posts.length; i++) {
 		countTotal++;
 		if (posts[i].is_removed) countRemoved++;
+		if (posts[i].is_deleted) countDeleted++;
 		console.log(posts[i])
 		var rendered = renderPost(posts[i]);
 		document.getElementById('posts').appendChild(rendered);
 	}
 	var removedPercent = countTotal > 0 ? Math.round((countRemoved / countTotal) * 100) : 0;
+	var deletedPercent = countTotal > 0 ? Math.round((countDeleted / countTotal) * 100) : 0;
 	document.getElementById('item-count').innerText = countTotal + ' post' + (countTotal != 1 ? 's' : '') + ' on page';
 	document.getElementById('item-count-removed').innerText = countRemoved + ' removed (' + removedPercent + '%)';
+	document.getElementById('item-count-deleted').innerText = countDeleted + ' deleted (' + deletedPercent + '%)';
 	if (has_more_entries && posts.length > 0) {
 		document.getElementById('nav-btns').hidden = false;
 		document.getElementById('btn-nextpage').href = '?from=' + posts[posts.length - 1].uuid;
@@ -811,11 +815,8 @@ function renderThread(urlinfo, post, comments) {
 				renderedComments[comment.comment_parent_id].children.push(rc);
 			}
 			countTotal++;
-			if (comment.is_deleted) {
-				countDeleted++;
-			} else if (comment.is_removed) {
-				countRemoved++;
-			}
+			if (comment.is_deleted) countDeleted++;
+			if (comment.is_removed) countRemoved++;
 		}
 		if (i < comments.length) {
 			console.log('more')
